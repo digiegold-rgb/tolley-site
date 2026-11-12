@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import {
-  WD_STRIPE_CHECKOUT_WASHER_URL,
-  WD_STRIPE_CHECKOUT_URL,
+  WD_CHECKOUT_WASHER_PATH,
+  WD_CHECKOUT_BUNDLE_PATH,
   WD_PRICE_WASHER,
   WD_PRICE_BUNDLE,
 } from "@/lib/wd";
@@ -37,7 +37,7 @@ export function WdPricing() {
           </ul>
           <Suspense fallback={
             <a
-              href={WD_STRIPE_CHECKOUT_WASHER_URL}
+              href={WD_CHECKOUT_WASHER_PATH}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-6 inline-flex w-full items-center justify-center rounded-full border-2 border-blue-200 bg-white px-6 py-2.5 text-sm font-bold text-blue-600 transition-all hover:bg-blue-50 hover:border-blue-300"
@@ -46,7 +46,7 @@ export function WdPricing() {
             </a>
           }>
             <WdCheckoutLink
-              href={WD_STRIPE_CHECKOUT_WASHER_URL}
+              href={WD_CHECKOUT_WASHER_PATH}
               label="washer_pricing"
               className="mt-6 inline-flex w-full items-center justify-center rounded-full border-2 border-blue-200 bg-white px-6 py-2.5 text-sm font-bold text-blue-600 transition-all hover:bg-blue-50 hover:border-blue-300"
             >
@@ -81,7 +81,7 @@ export function WdPricing() {
           </ul>
           <Suspense fallback={
             <a
-              href={WD_STRIPE_CHECKOUT_URL}
+              href={WD_CHECKOUT_BUNDLE_PATH}
               target="_blank"
               rel="noopener noreferrer"
               className="wd-glow mt-6 inline-flex w-full items-center justify-center rounded-full bg-blue-600 px-6 py-2.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-blue-700"
@@ -90,7 +90,7 @@ export function WdPricing() {
             </a>
           }>
             <WdCheckoutLink
-              href={WD_STRIPE_CHECKOUT_URL}
+              href={WD_CHECKOUT_BUNDLE_PATH}
               label="bundle_pricing"
               className="wd-glow mt-6 inline-flex w-full items-center justify-center rounded-full bg-blue-600 px-6 py-2.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-blue-700"
             >

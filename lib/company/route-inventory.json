@@ -938,6 +938,7 @@
   {"file":"app/api/water/weather/route.ts","path":"/api/water/weather","audience":"endpoint"},
   {"file":"app/api/wd/auth/route.ts","path":"/api/wd/auth","audience":"endpoint"},
   {"file":"app/api/wd/call/route.ts","path":"/api/wd/call","audience":"endpoint"},
+  {"file":"app/api/wd/checkout/route.ts","path":"/api/wd/checkout","audience":"endpoint"},
   {"file":"app/api/wd/clients/[id]/approve/route.ts","path":"/api/wd/clients/[id]/approve","audience":"endpoint"},
   {"file":"app/api/wd/clients/[id]/payments/route.ts","path":"/api/wd/clients/[id]/payments","audience":"endpoint"},
   {"file":"app/api/wd/clients/[id]/route.ts","path":"/api/wd/clients/[id]","audience":"endpoint"},
