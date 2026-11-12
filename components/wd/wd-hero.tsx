@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { WD_STRIPE_CHECKOUT_URL, WD_STRIPE_PORTAL_URL, WD_FACEBOOK_URL } from "@/lib/wd";
+import { WD_CHECKOUT_BUNDLE_PATH, WD_STRIPE_PORTAL_URL, WD_FACEBOOK_URL } from "@/lib/wd";
 import { WdCheckoutLink } from "./wd-checkout-link";
 
 function WavyText({ text }: { text: string }) {
@@ -75,7 +75,7 @@ export function WdHero() {
         <div className="mt-8 flex flex-wrap gap-3">
           <Suspense fallback={
             <a
-              href={WD_STRIPE_CHECKOUT_URL}
+              href={WD_CHECKOUT_BUNDLE_PATH}
               target="_blank"
               rel="noopener noreferrer"
               className="wd-glow inline-flex items-center rounded-full bg-white px-8 py-3 text-sm font-bold text-blue-700 shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
@@ -84,7 +84,7 @@ export function WdHero() {
             </a>
           }>
             <WdCheckoutLink
-              href={WD_STRIPE_CHECKOUT_URL}
+              href={WD_CHECKOUT_BUNDLE_PATH}
               label="bundle_hero"
               className="wd-glow inline-flex items-center rounded-full bg-white px-8 py-3 text-sm font-bold text-blue-700 shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
             >

@@ -39,6 +39,8 @@ import {
   isPaidWdSubscription,
   isWdSignupInvoice,
 } from "@/lib/wd-product";
+import { copyWdInstallAddress } from "@/lib/wd/persist-install-address";
+import { wdWelcomeRequestKey, type WdInstallAddress } from "@/lib/wd/install-address";
 import {
   WD_WELCOME_STRIPE_META,
   WD_WELCOME_SUBJECT,
@@ -375,14 +377,50 @@ async function seedPreWelcomedCustomer(record: WdPreWelcomedCustomer): Promise<v
   }
 }
 
+function subscriptionIdFromTrigger(trigger: WdWelcomeTrigger): string | null {
+  if (trigger.source === "checkout") {
+    const sub = trigger.session.subscription;
+    return typeof sub === "string" ? sub : sub?.id ?? trigger.subscription.id;
+  }
+  if (trigger.source === "subscription") return trigger.subscription.id;
+  const invoice = trigger.invoice as Stripe.Invoice & {
+    subscription?: string | Stripe.Subscription | null;
+  };
+  const parent = invoice.parent?.subscription_details?.subscription;
+  const raw = parent ?? invoice.subscription;
+  return typeof raw === "string" ? raw : raw?.id ?? null;
+}
+
+async function checkoutSessionFor(trigger: WdWelcomeTrigger): Promise<Stripe.Checkout.Session | null> {
+  if (trigger.source === "checkout") return trigger.session;
+  const subId = subscriptionIdFromTrigger(trigger);
+  if (!subId) return null;
+  try {
+    const listed = await getStripeClient().checkout.sessions.list({ subscription: subId, limit: 1 });
+    return listed.data[0] ?? null;
+  } catch (err) {
+    console.warn("[wd] install address session lookup failed", err);
+    return null;
+  }
+}
+
+async function rememberWdInstallAddress(trigger: WdWelcomeTrigger): Promise<WdInstallAddress | null> {
+  const session = await checkoutSessionFor(trigger);
+  if (!session) return null;
+  return copyWdInstallAddress(session);
+}
+
 async function notifyWdDesk(opts: {
   custId: string;
   client: WdClient;
   amount: number;
   sms: boolean;
   email: boolean;
+  installAddress: string | null;
+  installAddressSource: string | null;
 }): Promise<void> {
-  const requestKey = `wd-welcome:${opts.custId}`;
+  const requestKey = wdWelcomeRequestKey(opts.custId);
+  const installAddress = opts.installAddress || "Not collected";
   try {
     const existing = await prisma.leadAction.findUnique({ where: { requestKey }, select: { id: true } });
     if (existing) return;
@@ -401,6 +439,8 @@ async function notifyWdDesk(opts: {
           stripeSubscriptionId: opts.client.stripeSubscriptionId,
           welcomeSms: opts.sms,
           welcomeEmail: opts.email,
+          installAddress,
+          installAddressSource: opts.installAddressSource,
         },
       },
     });
@@ -414,6 +454,8 @@ async function notifyWdDesk(opts: {
         fields: {
           planAmount: opts.amount,
           stripeCustomerId: opts.custId,
+          installAddress,
+          ...(opts.installAddressSource ? { installAddressSource: opts.installAddressSource } : {}),
         },
         receiptToken: lead.receiptToken,
       });
@@ -437,6 +479,7 @@ export async function maybeSendWdSignupWelcome(trigger: WdWelcomeTrigger): Promi
 
   const custId = triggerCustomerId(trigger);
   if (!custId) return { status: "skipped", reason: "no customer" };
+  const installed = await rememberWdInstallAddress(trigger);
   const preWelcomed = wdPreWelcomedCustomer(custId);
   if (preWelcomed) {
     await seedPreWelcomedCustomer(preWelcomed);
@@ -521,7 +564,15 @@ export async function maybeSendWdSignupWelcome(trigger: WdWelcomeTrigger): Promi
   }
 
   await stampStripeWelcome(custId);
-  await notifyWdDesk({ custId, client: fresh, amount, sms: smsOk, email: emailOk });
+  await notifyWdDesk({
+    custId,
+    client: fresh,
+    amount,
+    sms: smsOk,
+    email: emailOk,
+    installAddress: installed?.formatted || fresh.address,
+    installAddressSource: installed?.source ?? null,
+  });
   console.log(`[wd] auto-welcome ${smsOk && emailOk ? "sent" : "partial"} client=${fresh.id} $${amount}`);
   return { status: smsOk && emailOk ? "sent" : "partial" };
 }

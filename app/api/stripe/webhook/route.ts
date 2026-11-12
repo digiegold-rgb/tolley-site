@@ -18,6 +18,7 @@ import {
   syncWdSubscription,
   recordWdInvoice,
 } from "@/lib/wd-subscription";
+import { copyWdInstallAddress } from "@/lib/wd/persist-install-address";
 import { maybeSendWdSignupWelcome } from "@/lib/wd/welcome";
 // Engine 1 self-serve "buy this website" close ($500 + $49/mo). Narrow,
 // self-contained handler so it can't affect the W/D / leads / food paths.
@@ -204,6 +205,7 @@ export async function POST(request: Request) {
             const sub = await stripe.subscriptions.retrieve(subId);
             if (isWdSubscription(sub)) {
               await syncWdSubscription(sub);
+              await copyWdInstallAddress(checkoutSession);
               await maybeSendWdSignupWelcome({ source: "checkout", session: checkoutSession, subscription: sub });
               break;
             }
