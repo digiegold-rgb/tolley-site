@@ -5,6 +5,7 @@ import { manifest as post } from "@/app/post/agent";
 import { manifest as fit } from "@/app/fit/agent";
 import { UNPROMOTED_SUBSITES } from "@/lib/public-route-policy";
 import { withDiscoveryFacts } from "./discovery-facts";
+import { manifest as job } from "@/app/job/agent";
 import type { SubsiteManifest } from "./agent-manifest";
 
 // Per-subsite manifests are imported here. Each app/<name>/agent.ts exports
@@ -61,6 +62,7 @@ import { manifest as wd } from "@/app/wd/agent";
 import { manifest as live } from "@/app/live/agent";
 
 const registered: SubsiteManifest[] = [
+  job,
   pc,
   repair,
   post, fit,
