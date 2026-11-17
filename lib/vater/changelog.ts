@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.70.1';
+export const APP_VERSION = '1.70.2';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,7 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '1.70.2', date: '2026-11-16', title: 'Consistent font delivery', items: ['Font downloads are recognized by their file format, keeping publication reliable when the font provider changes its URLs.'] },
   { version: '1.70.1', date: '2026-11-16', title: 'Reliable typography for the new company site', items: ['The Nunito typeface is bundled with the site so a third-party font download cannot block publication.'] },
   { version: '1.70', date: '2026-11-16', title: 'Meet the technology behind Tolley.io', items: ['A new homepage introduces our AI software, consumer electronics, custom computers, and founder story.', 'Explore Jared’s hardware background, creator channels, and work with technology-rich homes on the new About page.', 'Company contact information appears across the site, with consistent public facts for search and AI discovery.'] },
   { version: '1.69', date: '2026-11-11', title: 'Local part-time work, paid daily', items: ['The new job page explains the $28/hour helper role, neighborhood requirement, provided equipment, and starting hours.', 'Apply with five short answers, then send the prefilled text straight to Jared.'] },
