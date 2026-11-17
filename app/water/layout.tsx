@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import { Nunito } from "next/font/google";
+import { nunito } from "@/lib/fonts/nunito";
 import "./water.css";
 
-const nunito = Nunito({ variable: "--font-nunito", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Pool Water Management | Tolley",

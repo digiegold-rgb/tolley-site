@@ -1,15 +1,11 @@
 import type { Metadata } from "next";
-import { Nunito } from "next/font/google";
+import { nunito } from "@/lib/fonts/nunito";
 
 import { PoolsCartProvider } from "@/components/pools/pools-cart-provider";
 import { PoolsCartDrawer } from "@/components/pools/pools-cart-drawer";
 import { PoolsFooter } from "@/components/pools/pools-footer";
 import "./pools.css";
 
-const nunito = Nunito({
-  variable: "--font-nunito",
-  subsets: ["latin"],
-});
 
 /* /pools and /pools/[sku] query Prisma in the page and in PoolsProducts. */
 export const dynamic = "force-dynamic";
