@@ -63,3 +63,11 @@ Only the disposable PostgreSQL database at 127.0.0.1:55465/tolley_laundry_test a
 - Discovery HTTP health checks against the local production build.
 
 Launch acceptance involving real Stripe/SMS/email and counsel review remains separate from these code tests.
+
+## Verified build — November 16, 2026
+
+The branch is based on current main `ad11d074`. The production build completed all 608 static pages, with the repository's existing edge-runtime and FFmpeg tracing warnings. The TypeScript gate, route inventory and link audit passed. Targeted lint had no errors (three non-blocking style warnings).
+
+Validation passed: 48 workflow assertions, 11 discovery tests, current-main additive migration with no schema differences, authenticated HTTP/MFA and tenant-isolation checks, desktop/mobile renter browser tests, operator/owner dashboard browser tests, and all 31 discovery HTTP health checks against the production-mode local app. Stripe is stubbed in the financial tests; real provider acceptance tests remain outstanding.
+
+Reproducible dashboard check: `node --import tsx tests/laundry/dashboard-browser.ts` after the access suite creates its isolated test accounts. Screenshots are saved to `/tmp/laundry-desktop.png`, `/tmp/laundry-mobile.png`, `/tmp/laundry-operator-dashboard.png` and `/tmp/laundry-owner-dashboard.png`.
