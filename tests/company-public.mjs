@@ -16,7 +16,7 @@ try {
     assert.match(await contact.innerText(), /Tolley\.io[\s\S]*Independence, MO[\s\S]*support@tolley\.io/, path);
     assert.equal(await contact.locator('a[href="mailto:support@tolley.io"]').count(), 1, path);
     assert.equal(await page.locator('meta[name="robots"][content*="noindex"]').count(), 0, path);
-    assert.equal(await page.locator('link[rel="canonical"]').getAttribute('href'), `https://www.tolley.io${path}`, path);
+    assert.equal(new URL(await page.locator('link[rel="canonical"]').getAttribute('href')).href, `https://www.tolley.io${path}`, path);
     assert.doesNotMatch(body, /coming soon|under construction/i, path);
     assert.equal(await page.locator('input[type="password"]').count(), 0, `${path} has a gate`);
     if (path === '/') {
