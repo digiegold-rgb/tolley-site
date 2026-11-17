@@ -1,5 +1,6 @@
-import raw from "@/data/laundry/us-zips.json";
-const places = raw as unknown as Record<
+// Load reference data without asking TypeScript to infer 41,488 object keys.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const places = require("../../data/laundry/us-zips.json") as Record<
   string,
   [string, string, number, number]
 >;

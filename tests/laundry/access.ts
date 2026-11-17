@@ -9,12 +9,17 @@ if (!process.env.DATABASE_URL?.includes("127.0.0.1:55465/tolley_laundry_test"))
   throw new Error("Local test database required");
 process.env.AUTH_SECRET = "laundry-test-secret-only";
 async function session(admin = false) {
-  const id = randomUUID(),
-    email = admin ? "laundry-admin@example.invalid" : `${id}@example.invalid`,
+  let id = randomUUID();
+  const email = admin
+      ? "laundry-admin@example.invalid"
+      : `${id}@example.invalid`,
     sid = randomUUID();
-  await prisma.user.create({
-    data: { id, email, name: "Laundry Test Account" },
+  const user = await prisma.user.upsert({
+    where: { email },
+    create: { id, email, name: "Laundry Test Account" },
+    update: {},
   });
+  id = user.id;
   const jwt = await encode({
     secret: process.env.AUTH_SECRET!,
     salt: "authjs.session-token",
@@ -29,8 +34,10 @@ async function session(admin = false) {
   });
   const cookie = `authjs.session-token=${jwt}`;
   if (!admin) return { id, email, cookie };
-  const mfa = await prisma.userMfa.create({
-    data: {
+  const mfa = await prisma.userMfa.upsert({
+    where: { userId: id },
+    update: {},
+    create: {
       userId: id,
       totpSecret: "isolated-test-enrollment",
       verified: true,

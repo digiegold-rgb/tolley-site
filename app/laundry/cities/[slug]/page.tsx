@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { BASE } from "@/lib/laundry/config";
 import { publicOperators } from "@/lib/laundry/store";
 import { OperatorCard } from "@/components/laundry/operator-card";
+import { zipPlace } from "@/lib/laundry/geo";
 import { coveredCities } from "@/lib/laundry/cities";
 export const dynamic = "force-dynamic";
 export async function generateMetadata({
@@ -26,7 +27,8 @@ export default async function Page({
   const { slug } = await params,
     c = (await coveredCities()).find((c) => c.slug === slug);
   if (!c) notFound();
-  const ops = await publicOperators(c.zip);
+  const place = zipPlace(c.zip)!;
+  const ops = await publicOperators(`${place.city}, ${place.state}`);
   return (
     <div className="wrap page">
       <p className="eyebrow">Local rental directory · {c.state}</p>
@@ -48,7 +50,7 @@ export default async function Page({
       </form>
       <div className="grid two">
         {ops.map((op) => (
-          <OperatorCard op={op} zip={c.zip} key={op.id} />
+          <OperatorCard op={op} key={op.id} />
         ))}
       </div>
       {!ops.length && (
