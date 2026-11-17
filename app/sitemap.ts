@@ -5,6 +5,9 @@ import { withPrismaTimeout } from "@/lib/prisma-url";
 import { publicSubsites, SUBSITES } from "@/lib/subsites";
 import { allBlogPosts } from "@/lib/growth/stories";
 
+import { coveredCities } from "@/lib/laundry/cities";
+import { BASE as LAUNDRY_BASE } from "@/lib/laundry/config";
+
 const BASE = "https://www.tolley.io";
 
 export const dynamic = "force-dynamic";
@@ -177,7 +180,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     where: { status: "published" }, select: { id: true, updatedAt: true }, take: 500,
   }).catch(() => []), []);
 
+  const laundryCities = await coveredCities();
+  const laundryOperators = await prisma.laundryOperator.findMany({ where: { status: "approved" }, select: { slug: true, updatedAt: true } });
   return [
+    ...laundryCities.map(c => ({ url: `${LAUNDRY_BASE}/laundry/cities/${c.slug}`, changeFrequency: "weekly" as const, priority: 0.6 })),
+    ...laundryOperators.map(o => ({ url: `${LAUNDRY_BASE}/laundry/operators/${o.slug}`, lastModified: o.updatedAt, changeFrequency: "weekly" as const, priority: 0.7 })),
     homeRoute,
     ...subsiteRoutes,
     ...extras,

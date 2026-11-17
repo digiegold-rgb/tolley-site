@@ -425,6 +425,10 @@
     {
       "path": "/api/cron/customer-retention",
       "schedule": "45 10 * * *"
+    },
+    {
+      "path": "/api/cron/laundry",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

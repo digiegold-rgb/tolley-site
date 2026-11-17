@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { laundryStripeEvent } from "@/lib/laundry/billing";
 import Stripe from "stripe";
 import { recordCheckoutAttribution } from "@/lib/checkout-attribution";
 
@@ -104,6 +105,9 @@ export async function POST(request: Request) {
   }
 
   try {
+    if (process.env.LAUNDRY_BILLING_ENABLED === "true" && await laundryStripeEvent(event)) {
+      return NextResponse.json({ received: true });
+    }
     switch (event.type) {
       case "checkout.session.async_payment_succeeded": {
         await recordCheckoutAttribution(event.data.object as Stripe.Checkout.Session);

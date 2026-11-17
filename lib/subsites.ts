@@ -61,7 +61,10 @@ import { manifest as water } from "@/app/water/agent";
 import { manifest as wd } from "@/app/wd/agent";
 import { manifest as live } from "@/app/live/agent";
 
+import { manifest as laundry } from "@/app/laundry/agent";
+
 const registered: SubsiteManifest[] = [
+  laundry,
   job,
   pc,
   repair,
