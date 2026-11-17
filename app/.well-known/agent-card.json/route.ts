@@ -1,3 +1,4 @@
+import { COMPANY } from "@/lib/company-profile";
 import { NextResponse } from "next/server";
 import { SUBSITES, publicSubsites } from "@/lib/subsites";
 
@@ -51,8 +52,10 @@ export async function GET() {
     {
       name: "Tolley.io",
       description:
-        "Kansas City rentals, real estate, e-commerce, and AI services — every public subsite is agent-discoverable, lead-capturing, and shareable.",
+        COMPANY.description,
       url: BASE,
+      about: COMPANY.about,
+      contact: COMPANY.email,
       provider: {
         organization: "Your KC Homes LLC",
         url: BASE,

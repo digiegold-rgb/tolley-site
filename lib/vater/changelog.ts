@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.69';
+export const APP_VERSION = '1.70';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,7 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '1.70', date: '2026-11-16', title: 'Meet the technology behind Tolley.io', items: ['A new homepage introduces our AI software, consumer electronics, custom computers, and founder story.', 'Explore Jared’s hardware background, creator channels, and work with technology-rich homes on the new About page.', 'Company contact information appears across the site, with consistent public facts for search and AI discovery.'] },
   { version: '1.69', date: '2026-11-11', title: 'Local part-time work, paid daily', items: ['The new job page explains the $28/hour helper role, neighborhood requirement, provided equipment, and starting hours.', 'Apply with five short answers, then send the prefilled text straight to Jared.'] },
   { version: '1.68', date: '2026-11-11', title: 'A custom PC, built around you', items: ['Tolley PC offers custom computers, workstations, and assembly using your own parts.', 'Tell Jared about your goals, parts, budget, and preferred timing to request a personal quote.'] },
   { version: '1.67', date: '2026-11-09', title: 'One call for repairs and property help', items: ['Tolley Repair brings small repairs, furniture removal, cleanouts, estate sales, and home-sale options together.', 'Send one request to Jared for help with the whole property.'] },

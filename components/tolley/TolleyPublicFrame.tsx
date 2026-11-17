@@ -16,7 +16,7 @@ export default function TolleyPublicFrame({
   if (!theme) return children;
   return (
     <div
-      className="tolley-site"
+      className={`tolley-site${pathname === "/" || pathname === "/about" ? " tolley-flagship" : ""}`}
       data-tolley-kind={theme.kind}
       data-tolley-service={theme.service}
     >

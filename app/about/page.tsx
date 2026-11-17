@@ -1,119 +1,24 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
-
+import { COMPANY, COMPANY_PRODUCTS, CREATOR_AUDIENCES } from "@/lib/company-profile";
+import { StructuredData, founderSchema } from "@/components/seo/structured-data";
+import styles from "./about.module.css";
 export const metadata: Metadata = {
-  title: "About | tolley.io",
-  description:
-    "About Jared & Ruthann Tolley — reseller, real estate agent, and creator behind tolley.io/shop in Kansas City.",
-  alternates: { canonical: "https://www.tolley.io/about" },
+  title: "About Tolley.io | Jared Tolley, Founder",
+  description: "Meet Jared Tolley, founder of Tolley.io in Independence, MO: AI software, consumer electronics, custom PCs, Bitcoin mining experience, and technology-rich homes.",
+  alternates: { canonical: COMPANY.about },
+  openGraph: { title: "About Tolley.io | Jared Tolley, Founder", description: COMPANY.description, url: COMPANY.about, type: "website", images: [{ url: "/company-share.png", width: 1200, height: 630, alt: COMPANY.title }] },
 };
-
 export default function AboutPage() {
-  return (
-    <main className="tolley-prose-page">
-      <h1 className="text-3xl font-bold text-white">About tolley.io</h1>
-      <p className="mt-2 text-sm text-white/60">
-        Independence, MO &middot; Kansas City metro
-      </p>
-
-      <section className="mt-8 space-y-4 leading-relaxed">
-        <p>
-          Hi, I&rsquo;m <strong>Jared Tolley</strong>. My wife Ruthann and I
-          run a small reseller operation out of Independence, Missouri.
-          Ruthann sources products through liquidation bins and bid auctions,
-          we photograph and describe each item, and we list them locally on
-          Facebook Marketplace and ship orders nationally through our shop at{" "}
-          <Link href="/shop" className="text-purple-300 underline">
-            tolley.io/shop
-          </Link>
-          .
-        </p>
-
-        <p>
-          I&rsquo;m also a licensed real estate agent in Missouri (Your KC
-          Homes LLC) and a software engineer. The behind-the-scenes systems
-          on tolley.io are something I&rsquo;ve built personally to automate
-          the boring parts of resale: photo to FB Marketplace draft, eBay
-          listing, multi-platform video distribution, and inventory tracking.
-        </p>
-
-        <p>
-          You&rsquo;ll find us on social — I post short product videos on
-          TikTok and YouTube. If something you see in a video catches your
-          eye, you can buy it directly from us when we have it in stock, or
-          follow the affiliate link to a similar product on Amazon when we
-          don&rsquo;t.
-        </p>
-
-        <p>
-          Everything in our shop is sourced legitimately. Every item is
-          photographed by us. Every video is original. We disclose every
-          affiliate relationship.
-        </p>
-      </section>
-
-      <section className="tolley-panel mt-8 p-6">
-        <h2 className="text-lg font-semibold text-white">Find us online</h2>
-        <ul className="mt-3 space-y-1 text-sm">
-          <li>
-            <span className="text-white/40">Amazon storefront:</span>{" "}
-            <a
-              href="https://www.amazon.com/shop/digitaljared"
-              target="_blank"
-              rel="nofollow sponsored noopener noreferrer"
-              className="text-purple-300 underline"
-            >
-              amazon.com/shop/digitaljared
-            </a>{" "}
-            <span className="text-[0.65rem] text-white/30">(affiliate)</span>
-          </li>
-          <li>
-            <span className="text-white/40">Facebook:</span>{" "}
-            <a
-              href="https://www.facebook.com/profile.php?id=534686507"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-purple-300 underline"
-            >
-              Ruthann Tolley
-            </a>
-          </li>
-          <li>
-            <span className="text-white/40">TikTok:</span>{" "}
-            <a
-              href="https://www.tiktok.com/@cordlessintheoffice"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-purple-300 underline"
-            >
-              @cordlessintheoffice
-            </a>
-          </li>
-          <li>
-            <span className="text-white/40">Email:</span>{" "}
-            <a
-              href="mailto:jared@yourkchomes.com"
-              className="text-purple-300 underline"
-            >
-              jared@yourkchomes.com
-            </a>
-          </li>
-        </ul>
-      </section>
-
-      <section className="mt-8 text-sm text-white/60">
-        <Link href="/shop/disclosure" className="underline hover:text-white">
-          Affiliate disclosure
-        </Link>{" "}
-        ·{" "}
-        <Link href="/privacy" className="underline hover:text-white">
-          Privacy
-        </Link>{" "}
-        ·{" "}
-        <Link href="/terms" className="underline hover:text-white">
-          Terms
-        </Link>
-      </section>
-    </main>
-  );
+  return <main className={styles.about}>
+    <StructuredData data={{ "@context": "https://schema.org", "@type": "AboutPage", "@id": COMPANY.about + "#page", url: COMPANY.about, name: "About Tolley.io", about: [{ "@id": "https://www.tolley.io/#organization" }, { "@id": COMPANY.about + "#jared-tolley" }] }} id="ld-about" />
+    <StructuredData data={founderSchema} id="ld-founder" />
+    <header className={styles.hero}><div><p className={styles.eyebrow}>ABOUT TOLLEY.IO / INDEPENDENCE, MO</p><h1>Technology is personal.<br /><em>So is the company.</em></h1><p className={styles.lead}>Tolley.io is an independent AI software and consumer technology company founded by Jared Tolley in Independence, Missouri.</p><p>We build T-Agent for real estate professionals and Animate / Jelly Studio for AI video and animation. We also build custom PCs and resell consumer electronics through Treasure Hauls on Whatnot and our online shop.</p></div><div className={styles.portrait}><Image src="/homes/headshot.jpg" alt="Jared Tolley, Founder of Tolley.io" fill priority sizes="(max-width: 760px) 90vw, 380px" /><span>Jared Tolley <small>Founder · Tolley.io</small></span></div></header>
+    <section className={styles.story}><div><p className={styles.eyebrow}>A CAREER BUILT AROUND TECHNOLOGY</p><h2>From the workbench<br /><em>to what comes next.</em></h2></div><div><h3>Apple, hardware &amp; Bitcoin</h3><p>{COMPANY.hardwareStory}</p><p>{COMPANY.bitcoinStory}</p><a href={COMPANY.youtube} target="_blank" rel="noopener noreferrer">Explore the Digital Gold video library ↗</a><h3>Software built from real work</h3><p>Jared develops the software behind Tolley.io: research and follow-up tools for real estate, AI video workflows for creators, and systems that connect inventory, product listings, and video distribution.</p><h3>Technology-rich homes</h3><p>{COMPANY.homesStory}</p><Link href="/homes">Explore Your KC Homes ↗</Link></div></section>
+    <section className={styles.creator}><p className={styles.eyebrow}>BUILD. EXPLAIN. SHARE.</p><h2>A creator as well as a builder.</h2><p>Jared shares technology and product content across YouTube and TikTok. That experience with audiences and production informs the creative tools he builds.</p><div className={styles.audiences}>{CREATOR_AUDIENCES.map(a => <a href={a.url} key={a.platform} target="_blank" rel="noopener noreferrer"><strong>~{a.count}</strong><span>{a.platform} {a.label} ↗</span></a>)}</div><small>{COMPANY.audienceNote}</small></section>
+    <section className={styles.products}><p className={styles.eyebrow}>EXPLORE THE COMPANY</p><h2>What we build &amp; sell.</h2><div>{COMPANY_PRODUCTS.map(p => <Link href={p.href} key={p.kind}><h3>{p.name} <span>↗</span></h3><p>{p.description}</p></Link>)}<Link href="/pc"><h3>Tolley PC <span>↗</span></h3><p>Custom gaming PCs, creator workstations, and AI computers, with parts and assembly quoted for your needs.</p></Link></div></section>
+    <section className={styles.story}><div><p className={styles.eyebrow}>THE PEOPLE BEHIND THE FINDS</p><h2>A family business.<br /><em>A practical purpose.</em></h2></div><div><p>Jared and his wife Ruthann run the resale side together. Ruthann sources products through liquidation bins and auctions; the team photographs, describes, and lists the finds for local shoppers and online buyers.</p><p>Consumer electronics sit alongside furniture and home goods in the shop. Check each listing for the item’s condition and fulfillment options.</p><a href={COMPANY.whatnot} target="_blank" rel="noopener noreferrer">Treasure Hauls on Whatnot ↗</a><p className={styles.disclosure}>Some shopping links are affiliate links. <Link href="/shop/disclosure">Read our affiliate disclosure.</Link></p></div></section>
+    <section className={styles.contact}><p className={styles.eyebrow}>BUSINESS &amp; PRODUCT INQUIRIES</p><h2>Talk directly with Tolley.io.</h2><p>Jared Tolley, Founder<br />Independence, MO · United States</p><a href={`mailto:${COMPANY.email}`}>{COMPANY.email} ↗</a></section>
+  </main>;
 }

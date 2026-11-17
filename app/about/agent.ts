@@ -1,9 +1,10 @@
+import { COMPANY } from "@/lib/company-profile";
 import type { SubsiteManifest } from "@/lib/agent-manifest";
 
 export const manifest: SubsiteManifest = {
   name: "about",
   title: "About Tolley.io",
-  purpose: "How Tolley.io combines real estate, rentals, e-commerce, and AI agents under Your KC Homes LLC — the Independence-MO operator and the DGX Spark stack behind it.",
+  purpose: COMPANY.description,
   url: "/about",
   schemaType: "Organization",
   jsonEndpoints: [],

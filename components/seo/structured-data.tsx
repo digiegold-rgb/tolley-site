@@ -1,3 +1,4 @@
+import { COMPANY, COMPANY_PRODUCTS } from "@/lib/company-profile";
 import { LEADS_TIERS } from "@/lib/leads-subscription";
 
 /**
@@ -58,11 +59,12 @@ export const organizationSchema = {
   url: "https://www.tolley.io",
   logo: "https://www.tolley.io/favicon.ico",
   description:
-    "Software, creative tools, rentals, real estate, and local services from Jared Tolley in Kansas City.",
+    COMPANY.description,
   founder: {
     "@type": "Person",
-    name: "Jared Tolley",
-    jobTitle: "Owner / Operator",
+    "@id": COMPANY.about + "#jared-tolley",
+    name: COMPANY.founder,
+    jobTitle: COMPANY.founderRole,
   },
   address: {
     "@type": "PostalAddress",
@@ -73,14 +75,18 @@ export const organizationSchema = {
   contactPoint: {
     "@type": "ContactPoint",
     telephone: "+1-913-283-3826",
-    email: "Jared@yourkchomes.com",
+    email: COMPANY.email,
     contactType: "customer service",
     areaServed: "US",
     availableLanguage: "English",
   },
+  knowsAbout: ["AI software", "Consumer electronics", "AI video and animation", "Custom computers"],
+  hasOfferCatalog: { "@type": "OfferCatalog", name: "Tolley.io products", itemListElement: COMPANY_PRODUCTS.map(p => ({ "@type": "OfferCatalog", name: p.name, description: p.description, url: "https://www.tolley.io" + p.href })) },
   sameAs: [
     "https://www.facebook.com/yourkchomes",
-    "https://www.tiktok.com/@digitaljared",
+    COMPANY.tiktok,
+    COMPANY.youtube,
+    COMPANY.whatnot,
   ],
 };
 
@@ -94,7 +100,7 @@ export const websiteSchema = {
   url: "https://www.tolley.io",
   name: "Tolley.io",
   description:
-    "Explore T-Agent real estate tools, Jelly Studio video creation, rentals, and Kansas City services.",
+    COMPANY.description,
   publisher: {
     "@id": "https://www.tolley.io/#organization",
   },
@@ -125,4 +131,17 @@ export const tAgentSoftwareSchema = {
     url: "https://www.tolley.io/leads/pricing",
   })),
   provider: { "@id": "https://www.tolley.io/#organization" },
+};
+
+/** Same public biography rendered on /about; stable identity for AI discovery. */
+export const founderSchema = {
+  "@context": "https://schema.org", "@type": "Person",
+  "@id": COMPANY.about + "#jared-tolley", name: COMPANY.founder,
+  jobTitle: COMPANY.founderRole, url: COMPANY.about,
+  image: "https://www.tolley.io/homes/headshot.jpg",
+  description: [COMPANY.hardwareStory, COMPANY.bitcoinStory, COMPANY.homesStory].join(" "),
+  worksFor: { "@id": "https://www.tolley.io/#organization" },
+  homeLocation: { "@type": "Place", name: "Independence, Missouri" },
+  knowsAbout: ["AI software", "Consumer technology", "Bitcoin mining hardware", "Custom PCs", "Video creation", "Real estate"],
+  sameAs: [COMPANY.youtube, COMPANY.tiktok],
 };
