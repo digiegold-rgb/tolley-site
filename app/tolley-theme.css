@@ -75,3 +75,16 @@ body:has(.tolley-site) { background: #101815; padding-bottom: 0; }
   body:has(.tolley-site) { background: #fff; }
   .tolley-site :is(.tolley-header, .tolley-footer, .tolley-skip) { display: none; }
 }
+
+/* Flagship company pages: editorial ivory, ink and a restrained technology blue. */
+.tolley-site.tolley-flagship{--tolley-bg:#f7f6f2;--tolley-text:#17232b;--tolley-muted:#54616a;--tolley-accent:#284fd3;--tolley-line:#17232b25;--tolley-on-accent:#fff;--tolley-accent-hover:#1d3eac;background:#f7f6f2;color:#17232b;color-scheme:light}
+body:has(.tolley-flagship){background:#f7f6f2}
+.tolley-flagship .tolley-header,.tolley-flagship .tolley-footer{max-width:1320px;padding-inline:clamp(24px,5vw,72px)}
+.tolley-flagship .tolley-header{padding-block:28px}
+.tolley-flagship .tolley-wordmark{font-size:25px;letter-spacing:-1.2px;font-weight:600}
+.tolley-flagship .tolley-header nav{gap:30px;font-size:11px}
+.tolley-flagship .tolley-footer{margin-top:30px;padding-block:35px}
+.tolley-flagship .tolley-footer nav{gap:18px;font-size:11px}
+.company-contact-footer{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px 28px;padding:26px 24px;background:#111e2a;border-top:1px solid #ffffff26;color:#cad4de;font-family:var(--font-sora),sans-serif;font-size:11px;line-height:1.8;position:relative;z-index:1}
+.company-contact-footer a{color:#e2e9ef;text-decoration:none;overflow-wrap:anywhere}.company-contact-footer a:first-child{font-weight:600;color:#fff;font-size:16px;letter-spacing:-.04em}.company-contact-footer a:hover{text-decoration:underline}.company-contact-footer a:focus-visible{outline:2px solid #a2bafa;outline-offset:5px}
+@media(max-width:600px){.tolley-flagship .tolley-header{gap:20px}.tolley-flagship .tolley-header nav{gap:19px;font-size:10px}.company-contact-footer{justify-content:flex-start;gap:10px 20px}.company-contact-footer a:first-child{flex-basis:100%}}

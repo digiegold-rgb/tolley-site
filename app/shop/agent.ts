@@ -3,7 +3,7 @@ import type { SubsiteManifest } from "@/lib/agent-manifest";
 export const manifest: SubsiteManifest = {
   name: "shop",
   title: "Ruthann's Treasure Haul",
-  purpose: "Curated vintage and reseller finds — Stripe Buy-Now checkout with shipping, FB Marketplace mirror, and Amazon affiliate picks; 215+ sold, 18 reviews.",
+  purpose: "Consumer electronics, vintage, and reseller finds from Treasure Hauls. Browse current shop listings, item-specific checkout and fulfillment details, and Amazon affiliate picks.",
   url: "/shop",
   schemaType: "ItemList",
   jsonEndpoints: [],

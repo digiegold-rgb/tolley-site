@@ -1,61 +1,51 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { EventTracker } from "@/components/analytics/site-tracker";
 import { LegacyAgentLinks } from "@/components/homepage/legacy-agent-links";
+import { COMPANY, COMPANY_PRODUCTS, CREATOR_AUDIENCES } from "@/lib/company-profile";
 import styles from "./tolley-home.module.css";
 
 export const metadata: Metadata = {
-  title: "Tolley | Tools, Creative Work & Kansas City Services",
-  description: "Explore T-Agent real estate tools, Jelly Studio video creation, and Tolley's rentals, real estate, estate sales and local services.",
+  title: COMPANY.title, description: COMPANY.description,
   alternates: { canonical: "https://www.tolley.io/" },
-  openGraph: { title: "Tolley | Find what you need", description: "Tools for your work. A studio for your stories. Help close to home.", url: "https://www.tolley.io/", type: "website" },
+  openGraph: { title: COMPANY.title, description: COMPANY.description, url: "https://www.tolley.io/", type: "website", images: [{ url: "/company-share.png", width: 1200, height: 630, alt: COMPANY.title }] },
+  twitter: { card: "summary_large_image", title: COMPANY.title, description: COMPANY.description, images: ["/company-share.png"] },
 };
-
-const services = [
-  { name: "Custom PC builds", text: "Plan a custom computer with Jared, or bring your own parts for assembly.", href: "/pc" },
-  { name: "Washer & dryer rentals", text: "Explore equipment rental options and request availability in your ZIP.", href: "/wd" },
-  { name: "Homes & real estate", text: "Find Kansas City homes and connect with Jared about your next move.", href: "/homes" },
-  { name: "Estate sales", text: "Browse upcoming sales or get help planning a sale of your own.", href: "/estate" },
-  { name: "Rentals for the day", text: "Trailers, generators, tables and more for your next project or gathering.", href: "/rental" },
-  { name: "Moving & cleanouts", text: "Find moving help, hauling and estate cleanout services.", href: "/cleanouts" },
-  { name: "Shop the finds", text: "Explore furniture, household finds and the latest treasure hauls.", href: "/shop" },
-];
-
 export default function TolleyHome() {
-  return <EventTracker site="home"><main className={`tolley-home ${styles.home}`}>
+  return <EventTracker site="home"><main className={styles.home}>
     <LegacyAgentLinks />
     <section id="main-content" className={styles.hero}>
-      <p className={styles.eyebrow}>Independent ideas. Useful things.</p>
-      <h1>What can Tolley<br />help you <em>do?</em></h1>
-      <p className={styles.intro}>Tools for your work. A studio for your stories.<br />And hands-on help around Kansas City.</p>
-      <a className={styles.jump} href="#products">Find your starting point <span aria-hidden="true">↓</span></a>
-      <div className={styles.heroMark} aria-hidden="true"><span>T</span><i /></div>
-    </section>
-    <section id="products" className={styles.section} aria-labelledby="products-title">
-      <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Built by Tolley</p><h2 id="products-title">Two ways to make more possible.</h2></div><span className={styles.sectionNote}>Choose the product that fits your work.</span></div>
-      <div className={styles.products}>
-        <article className={`${styles.product} ${styles.agent}`}>
-          <div className={styles.productTop}><span>FOR REAL ESTATE AGENTS</span><span aria-hidden="true">↗</span></div>
-          <div className={styles.agentArt} aria-hidden="true"><div><span>PROPERTY</span><i /><i /><i /></div><div><span>RESEARCH</span><i /><i /></div><div><span>NEXT ACTION</span><i /></div></div>
-          <h3>T-Agent</h3><p>Get a clearer picture<br />of your next opportunity.</p>
-          <div className={styles.productDescription}>Explore lead research, property dossiers, scoring and follow-up tools in one real estate workspace.</div>
-          <div className={styles.actions}><Link className={styles.primary} href="/agent" data-track-event="product_click" data-track-label="agent">Explore T-Agent ↗</Link><Link className={styles.secondary} href="/login?callbackUrl=%2Fleads%2Fdashboard">T-Agent sign in</Link></div>
-        </article>
-        <article className={`${styles.product} ${styles.studio}`}>
-          <div className={styles.productTop}><span>FOR PEOPLE WITH A STORY</span><span>PUBLIC BETA</span></div>
-          <div className={styles.filmArt} aria-hidden="true"><div /><div /><div /><span>YOUR STORY. YOUR FILM.</span></div>
-          <h3>Jelly Studio</h3><p>Turn a story worth telling<br />into a film worth sharing.</p>
-          <div className={styles.productDescription}>Create with your script, narration and generated scenes. Explore the demos and pay-per-video studio.</div>
-          <div className={styles.actions}><Link className={styles.primary} href="/animate" data-track-event="product_click" data-track-label="animate">Explore Jelly Studio ↗</Link><Link className={styles.secondary} href="/login?callbackUrl=%2Fanimate">Jelly Studio sign in</Link></div>
-        </article>
+      <div className={styles.heroCopy}>
+        <p className={styles.eyebrow}><span className={styles.statusDot} /> INDEPENDENTLY BUILT. HUMAN AT HEART.</p>
+        <h1><span className={styles.companyName}>Tolley.io</span>AI software &amp;<br /><em>consumer technology.</em></h1>
+        <p className={styles.intro}>{COMPANY.introduction}</p>
+        <div className={styles.actions}><a className={styles.primary} href="#products">Explore our products <span aria-hidden="true">↗</span></a><Link className={styles.textLink} href="/about">Meet the founder ↗</Link></div>
+        <p className={styles.heroLocation}>INDEPENDENCE, MISSOURI <span> / </span> BUILT FOR WHAT’S NEXT</p>
+      </div>
+      <div className={styles.heroArt} aria-hidden="true">
+        <div className={styles.artTop}><span>TOLLEY / TECHNOLOGY IN PRACTICE</span><span>01—03</span></div>
+        <div className={styles.orbit}><div className={styles.orbitInner} /><div className={styles.monogram}>T<span>.</span></div><i /><b /></div>
+        <div className={styles.artBottom}><span>SOFTWARE<br />HARDWARE<br />CREATIVITY</span><span className={styles.artArrow}>↗</span></div>
       </div>
     </section>
-    <section id="services" className={styles.section} aria-labelledby="services-title">
-      <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Around Kansas City</p><h2 id="services-title">Help with the everyday.<br />And the next big step.</h2></div><Link href="/start" className={styles.textLink}>All services ↗</Link></div>
-      <div className={styles.services}>{services.map((service, i) => <Link className={styles.service} href={service.href} key={service.href} data-track-event="service_click" data-track-label={service.href}>
-        <div><span className={styles.serviceNumber}>0{i + 1}</span><span aria-hidden="true">↗</span></div><h3>{service.name}</h3><p>{service.text}</p>
-      </Link>)}</div>
+    <div className={styles.disciplines}><span>AI SOFTWARE</span><i>✳</i><span>CONSUMER ELECTRONICS</span><i>✳</i><span>CUSTOM COMPUTING</span><i>✳</i><span>CREATIVE TECHNOLOGY</span></div>
+    <section id="products" className={styles.section} aria-labelledby="products-title">
+      <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>01 / WHAT WE BUILD &amp; SELL</p><h2 id="products-title">Technology you can<br /><em>put to work.</em></h2></div><p>Software for professionals. Tools for creators. Electronics for everyday life.</p></div>
+      <div className={styles.products}>{COMPANY_PRODUCTS.map((product, index) => <article key={product.kind} className={`${styles.product} ${styles[product.kind]}`}>
+        <div className={styles.productTop}><span>{product.category}</span><span>0{index + 1}</span></div>
+        <div className={styles.productArt} aria-hidden="true">{product.kind === "agent" ? <div className={styles.agentArt}><span>PROPERTY INTELLIGENCE</span><div /><div /><div /><b>RESEARCH → INSIGHT → ACTION</b></div> : product.kind === "studio" ? <div className={styles.filmArt}><i /><i /><i /><span>STORY → SCENE → FILM</span></div> : <div className={styles.deviceArt}><div /><i /><span>DISCOVER. REUSE. ENJOY.</span></div>}</div>
+        <h3>{product.name}</h3><p className={styles.productHeadline}>{product.title}</p><p className={styles.productDescription}>{product.description}</p>
+        <Link className={styles.productLink} href={product.href} data-track-event="product_click" data-track-label={product.kind}>{product.action} <span aria-hidden="true">↗</span></Link>
+        {product.kind === "resale" && <a className={styles.whatnot} href={COMPANY.whatnot} target="_blank" rel="noopener noreferrer">Find us on Whatnot ↗</a>}
+      </article>)}</div>
+      <Link className={styles.hardwareBand} href="/pc"><span className={styles.hardwareIcon} aria-hidden="true">⌘</span><div><p className={styles.eyebrow}>TOLLEY PC / CUSTOM HARDWARE</p><h3>Your next machine. Built around you.</h3><p>Gaming PCs, creator workstations, and systems for local AI.</p></div><span className={styles.bandAction}>Explore custom builds ↗</span></Link>
     </section>
-    <section className={styles.about} aria-labelledby="about-title"><p className={styles.eyebrow}>A name behind the work</p><h2 id="about-title">Hi, I’m Jared Tolley.</h2><p>I build tools and run services from the Kansas City area. Each offering has its own home here, so you can go straight to the details, see what’s available, and take the next step.</p><Link href="/about" className={styles.textLink}>Meet Jared ↗</Link></section>
+    <section className={styles.founderSection} aria-labelledby="founder-title"><div className={styles.founderGrid}>
+      <div className={styles.portrait}><Image src="/homes/headshot.jpg" alt="Jared Tolley, Founder of Tolley.io" fill sizes="(max-width: 760px) 90vw, 420px" /><span>JARED TOLLEY / FOUNDER</span></div>
+      <div className={styles.founderCopy}><p className={styles.eyebrow}>02 / THE PERSON BEHIND THE PRODUCTS</p><h2 id="founder-title">A builder’s mind.<br /><em>A creator’s perspective.</em></h2><p>From five years as an Apple Genius to Bitcoin mining hardware, AI software, and technology-rich homes, Jared Tolley brings hands-on experience to every side of the business.</p><p>Based in Independence, Missouri, he builds tools, shares what he learns, and connects people with technology they can actually use.</p><div className={styles.audiences}>{CREATOR_AUDIENCES.map(a => <a key={a.platform} href={a.url} target="_blank" rel="noopener noreferrer"><strong>~{a.count}</strong><span>{a.platform} {a.label} ↗</span></a>)}</div><p className={styles.audienceNote}>{COMPANY.audienceNote}</p><Link className={styles.textLink} href="/about">The full story ↗</Link></div>
+    </div></section>
+    <section className={styles.section} aria-labelledby="homes-title"><div className={styles.homesPanel}><div><p className={styles.eyebrow}>03 / WHERE TECHNOLOGY MEETS HOME</p><h2 id="homes-title">Extraordinary homes.<br /><em>An eye for what’s inside.</em></h2></div><div><p>Million-dollar homes. Advanced home technology. A real estate agent who understands the systems as well as the space.</p><p>Explore Jared’s real estate work through Your KC Homes, serving the Kansas City area.</p><Link className={styles.textLink} href="/homes">Explore homes &amp; real estate ↗</Link></div></div></section>
+    <section className={styles.contactSection}><p className={styles.eyebrow}>LET’S MAKE SOMETHING USEFUL.</p><h2>Big ideas.<br /><em>A direct conversation.</em></h2><a className={styles.primary} href={`mailto:${COMPANY.email}`}>Get in touch <span aria-hidden="true">↗</span></a><div className={styles.localLinks}><span>Also around Kansas City</span><Link href="/cleanouts">Cleanouts</Link><Link href="/estate">Estate sales</Link><Link href="/rental">Rentals</Link><Link href="/start">All services ↗</Link></div></section>
   </main></EventTracker>;
 }

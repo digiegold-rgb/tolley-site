@@ -1,3 +1,4 @@
+import { COMPANY, COMPANY_PRODUCTS, CREATOR_AUDIENCES } from "@/lib/company-profile";
 import { NextResponse } from "next/server";
 import { SUBSITES, publicSubsites } from "@/lib/subsites";
 
@@ -25,6 +26,7 @@ export async function GET(_req: Request) {
     {
       name: "Tolley.io Agent Index",
       base: BASE,
+      company: { ...COMPANY, products: COMPANY_PRODUCTS, creatorAudiences: CREATOR_AUDIENCES, audienceBasis: "Approximate, founder-reported November 2026" },
       generatedAt: new Date().toISOString(),
       stats: {
         total: SUBSITES.length,

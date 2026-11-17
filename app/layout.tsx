@@ -1,3 +1,5 @@
+import { COMPANY } from "@/lib/company-profile";
+import { CompanyContactFooter } from "@/components/tolley/CompanyContactFooter";
 import { ContactTracker } from "@/components/discovery/contact-tracker";
 import type { Metadata } from "next";
 import { JetBrains_Mono, Sora } from "next/font/google";
@@ -36,9 +38,9 @@ export const metadata: Metadata = {
   ...(process.env.BING_SITE_VERIFICATION
     ? { verification: { other: { "msvalidate.01": process.env.BING_SITE_VERIFICATION } } }
     : {}),
-  title: "Tolley | Products & Services",
+  title: COMPANY.title,
   description:
-    "Explore Tolley's software, creative tools, rentals and local services. Based in the Kansas City area.",
+    COMPANY.description,
 };
 
 export default function RootLayout({
@@ -62,6 +64,7 @@ export default function RootLayout({
       <body className={`${sora.variable} ${jetBrainsMono.variable} antialiased`}>
         <AuthSessionProvider>
           <TolleyPublicFrame>{children}</TolleyPublicFrame>
+          <CompanyContactFooter />
           <MainSiteTracker />
           <AgentDiscovery />
           <ContactTracker />
