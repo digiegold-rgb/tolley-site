@@ -1,0 +1,3 @@
+Nunito variable font (normal, weight 200–1000)
+Source: https://github.com/google/fonts/tree/main/ofl/nunito
+Downloaded November 16, 2026. Distributed under the included SIL Open Font License.

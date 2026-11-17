@@ -1,15 +1,11 @@
 import type { Metadata } from "next";
-import { Nunito } from "next/font/google";
+import { nunito } from "@/lib/fonts/nunito";
 
 import { PicnicFooter } from "@/components/picnic-table/picnic-footer";
 import { GA4 } from "@/components/analytics/ga4";
 import { MetaPixel } from "@/components/analytics/meta-pixel";
 import "./picnic-table.css";
 
-const nunito = Nunito({
-  variable: "--font-nunito",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   alternates: { canonical: "https://www.tolley.io/picnic-table" },
