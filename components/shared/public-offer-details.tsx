@@ -17,10 +17,10 @@ export function PublicOfferDetails({ name }: { name: string }) {
       {!!s.pricing?.length && <ul className="list-disc pl-5">{s.pricing.map((p, i) => <li key={i}>{p.currency} {p.amount} {p.unit}{p.notes ? ` — ${p.notes}` : ""}</li>)}</ul>}
       <p className="text-sm text-neutral-300">{s.discovery.pricingNote}</p>
       <div className="space-y-3">{discoveryQuestions(s).slice(1).map(f => <details key={f.q}><summary className="cursor-pointer font-medium">{f.q}</summary><p className="mt-2 leading-relaxed text-neutral-300">{f.a}</p></details>)}</div>
-      {!!s.discovery.evidence.length && <div className="flex flex-wrap gap-4">{s.discovery.evidence.map(href => <Link key={href} className="underline" href={href}>{href.includes("demo") ? "Watch a finished example" : href.includes("reviews") ? "Customer reviews" : href.includes("sold") ? "Sold examples" : "See our work"}</Link>)}</div>}
+      {!!s.discovery.evidence.length && <div className="flex flex-wrap gap-4">{s.discovery.evidence.map(href => <Link key={href} className="underline" href={href}>{href.includes("operator-agreement") ? "Operator agreement" : href.includes("demo") ? "Watch a finished example" : href.includes("reviews") ? "Customer reviews" : href.includes("sold") ? "Sold examples" : "See our work"}</Link>)}</div>}
       {["repair", "cleanouts", "estate", "homes", "real-estate-agent", "housing"].includes(name) && <p>Preparing a property? <Link href="/repair" className="underline">Repairs & property help</Link> · <Link href="/cleanouts" className="underline">Cleanouts</Link> · <Link href="/estate" className="underline">Estate sales</Link> · <Link href="/homes" className="underline">Home-selling help</Link></p>}
       {["wd", "moving", "trailer"].includes(name) && <p>Clearing space first? <Link href="/cleanouts" className="underline">Ask about cleanouts and appliance haul-away</Link>.</p>}
-      {s.discovery.operator && !["pc", "repair", "cleanouts", "wd", "housing", "estate", "homes"].includes(name) && <DiscoveryInquiry offering={name} />}
+      {s.discovery.operator && !["pc", "repair", "cleanouts", "wd", "housing", "estate", "homes", "laundry"].includes(name) && <DiscoveryInquiry offering={name} />}
       <Link href={`/services/agent?offering=${encodeURIComponent(name)}`} className="inline-block underline">Let your AI agent explore this service</Link>
       <Link href="/services" className="inline-block underline">Explore all Tolley services and tools</Link>
     </div>

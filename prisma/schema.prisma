@@ -6716,3 +6716,143 @@ model WdActivitySnapshot {
   payload   Json
   updatedAt DateTime @updatedAt
 }
+
+
+// Laundry Rental Network: independent operator tenants; no access to W/D customer tables.
+model LaundryOperator {
+  id String @id @default(cuid())
+  ownerId String @unique
+  slug String @unique
+  name String
+  legalName String
+  email String
+  phone String
+  address String
+  city String
+  state String
+  zip String
+  zips String[]
+  radiusMiles Int @default(0)
+  description String
+  prices Json
+  deliveryFeeCents Int @default(0)
+  rentalTerms String
+  termsVersion Int @default(1)
+  status String @default("pending")
+  anchor Boolean @default(false)
+  feeCents Int @default(4500)
+  stripeCustomerId String? @unique
+  paymentMethodId String?
+  paymentSetupAt DateTime?
+  agreementVersion String
+  agreementAcceptedAt DateTime @default(now())
+  approvedAt DateTime?
+  lastAssignedAt DateTime?
+  websiteRequested Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  leads LaundryLead[]
+  @@index([status])
+}
+
+model LaundryLead {
+  id String @id @default(cuid())
+  requestKey String @unique
+  payloadHash String
+  operatorId String?
+  operator LaundryOperator? @relation(fields: [operatorId], references: [id])
+  status String @default("requested")
+  name String
+  phone String
+  email String
+  address String
+  city String
+  state String
+  zip String
+  unit String
+  preferredDate String
+  deliveryDate String?
+  notes String @default("")
+  smsConsent Boolean @default(false)
+  attribution Json
+  agreementText String?
+  agreementHash String?
+  signedName String?
+  signedAt DateTime?
+  consentVersion String
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  booking LaundryBooking?
+  review LaundryReview?
+  events LaundryEvent[]
+  @@index([operatorId, status, createdAt])
+  @@index([zip, createdAt])
+  @@index([status, expiresAt])
+}
+
+model LaundryBooking {
+  id String @id @default(cuid())
+  leadId String @unique
+  lead LaundryLead @relation(fields: [leadId], references: [id])
+  feeCents Int
+  status String @default("pending")
+  paymentIntentId String? @unique
+  refundId String? @unique
+  refundedCents Int @default(0)
+  paidAt DateTime?
+  refundedAt DateTime?
+  disputeReason String?
+  disputeStatus String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model LaundryReview {
+  id String @id @default(cuid())
+  leadId String @unique
+  lead LaundryLead @relation(fields: [leadId], references: [id])
+  rating Int
+  body String
+  displayName String
+  status String @default("published")
+  moderationReason String?
+  createdAt DateTime @default(now())
+}
+
+model LaundryEvent {
+  id String @id @default(cuid())
+  leadId String
+  lead LaundryLead @relation(fields: [leadId], references: [id])
+  actor String
+  action String
+  detail String
+  createdAt DateTime @default(now())
+  @@index([leadId, createdAt])
+}
+
+model LaundryNotification {
+  id String @id
+  channel String
+  recipient String
+  body String
+  status String @default("pending")
+  attempts Int @default(0)
+  leaseUntil DateTime?
+  leaseToken String?
+  providerId String?
+  lastError String?
+  availableAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  @@index([status, availableAt])
+}
+
+model LaundryMessage {
+  id String @id
+  phone String
+  leadId String?
+  body String
+  reply String?
+  createdAt DateTime @default(now())
+  @@index([leadId, createdAt])
+}

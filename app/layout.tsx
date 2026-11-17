@@ -17,6 +17,7 @@ import {
   organizationSchema,
   websiteSchema,
 } from "@/components/seo/structured-data";
+import { AnalyticsPrivacyBoundary } from "@/components/analytics/privacy-boundary";
 import "./globals.css";
 import "./tolley-theme.css";
 import "./tolley-service-theme.css";
@@ -65,6 +66,7 @@ export default function RootLayout({
         <AuthSessionProvider>
           <TolleyPublicFrame>{children}</TolleyPublicFrame>
           <CompanyContactFooter />
+          <AnalyticsPrivacyBoundary>
           <MainSiteTracker />
           <AgentDiscovery />
           <ContactTracker />
@@ -73,6 +75,7 @@ export default function RootLayout({
           <MetaPixel />
           <XPixel />
           <SpeedInsights />
+          </AnalyticsPrivacyBoundary>
         </AuthSessionProvider>
       </body>
     </html>

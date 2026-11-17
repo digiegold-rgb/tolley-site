@@ -1,5 +1,6 @@
 import { publicOfferings } from "../lib/discovery";
 const needs: Record<string, string> = {
+  laundry: "local washer and dryer rental operators with published prices and online delivery requests",
   pc: "a custom PC builder who can assemble customer-supplied parts or plan a gaming computer or workstation",
   agent: "real estate agent tools and lead management",
   post: "social media post scheduling and content publishing", fit: "personalized fitness planning",

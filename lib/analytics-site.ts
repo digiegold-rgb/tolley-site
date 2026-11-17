@@ -4,6 +4,7 @@ const extraSites = ["services", "clean", "fit", "manus", "hq", "account", "setti
 
 /** One classification shared by the sole root pageview tracker. */
 export function analyticsSiteForPath(pathname: string): string | null {
+  if (pathname.startsWith("/laundry/request/") || pathname === "/laundry/dashboard") return null;
   if (["/api", "/admin", "/_next", "/login", "/logout", "/reset-password"].some(
     prefix => pathname === prefix || pathname.startsWith(prefix + "/"),
   )) return null;
