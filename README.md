@@ -43,6 +43,8 @@ Optional:
 - `EMAIL_SERVER_PASSWORD`
 - `EMAIL_FROM`
 - `REDIS_URL` (if you later add Redis-backed usage/cache flows)
+- `HEAT_PIN` (PIN for the private `/heat` dashboard; separate from `SHOP_ADMIN_PIN`)
+- `HEAT_INGEST_TOKEN` (bearer token Spark sends to `POST /api/heat/ingest`; see `docs/heat-ingest.md`)
 - `SESSION_IDLE_TIMEOUT_MS` (default 45 minutes)
 
 ## Local Setup
