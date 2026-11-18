@@ -56,6 +56,7 @@ const ORPHAN_ALLOWLIST = new Set([
   "/manus",
   "/media",
   "/tv",
+  "/heat", // PIN-gated home furnace dashboard; direct URL only, like /tv
   "/research", // PIN-gated deep-research search, owner tool like /tv
   "/signature", // owner tool — animated email signature preview/installer
 ]);

@@ -152,6 +152,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
+      { source: "/heat", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
       // Rapier's bundled physics runs as WebAssembly. Keep this permission
       // confined to game routes; JavaScript eval remains forbidden in production.
       {

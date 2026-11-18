@@ -6716,3 +6716,49 @@ model WdActivitySnapshot {
   payload   Json
   updatedAt DateTime @updatedAt
 }
+
+/// Spark pushes a furnace snapshot about every 5 minutes. Ingest keeps 90 days.
+model HeatSnapshot {
+  recordedAt   DateTime @id
+  kitchenF     Float?
+  loftF        Float?
+  kitchenRh    Float?
+  loftRh       Float?
+  outdoorF     Float?
+  upSetpoint   Float?
+  upMode       String?
+  upHvac       String
+  upFanMode    String?
+  downSetpoint Float?
+  downMode     String?
+  downHvac     String
+  downFanMode  String?
+  receivedAt   DateTime @default(now())
+}
+
+/// One row per calendar day. Kept indefinitely; Spark may upsert the same date.
+model HeatDay {
+  date             String   @id
+  upstairsHeatH    Float
+  downstairsHeatH  Float
+  upstairsCycles   Int
+  downstairsCycles Int
+  outdoorLow       Float?
+  outdoorHigh      Float?
+  outdoorAvg       Float?
+  hdd65            Float?
+  estThermsLow     Float?
+  estThermsHigh    Float?
+  estCostLow       Float?
+  estCostHigh      Float?
+  ccfPerHdd        Float?
+  receivedAt       DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+/// Optional nightly markdown note from Spark. One row per date.
+model HeatReview {
+  date      String   @id
+  text      String
+  updatedAt DateTime @updatedAt
+}
