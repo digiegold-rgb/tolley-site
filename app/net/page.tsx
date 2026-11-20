@@ -12,9 +12,6 @@ import {
   TN_PHONE,
   TN_PHONE_SMS,
   TN_PHONE_TEL,
-  TN_PROOF_MEASURED,
-  TN_PROOF_NOTES,
-  TN_PROOF_STATS,
   TN_PURPOSE,
   netJsonLd,
   netPriceLines,
@@ -95,29 +92,6 @@ export default function NetPage() {
               ))}
             </ul>
             {PRICING_PLACEHOLDER}
-          </section>
-
-          <section aria-labelledby="tn-proof">
-            <p className="tc-kicker text-center">From Jared&apos;s own network</p>
-            <h2 id="tn-proof" className="tc-display mt-2 mb-3 text-center text-3xl text-white">
-              Measured {TN_PROOF_MEASURED}
-            </h2>
-            <p className="mx-auto mb-8 max-w-2xl text-center text-sm leading-relaxed text-white/55">
-              Fiber in passthrough to UniFi, on Jared&apos;s home network. These are that install&apos;s results, not a guarantee for every house.
-            </p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {TN_PROOF_STATS.map((stat) => (
-                <div key={stat.label} className="tc-card p-4 text-center">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-white/45">{stat.label}</p>
-                  <p className="tc-display mt-2 text-xl text-white sm:text-2xl">{stat.value}</p>
-                </div>
-              ))}
-            </div>
-            <ul className="mx-auto mt-6 max-w-2xl space-y-3 text-sm leading-relaxed text-white/65">
-              {TN_PROOF_NOTES.map((note) => (
-                <li key={note} className="tc-card px-5 py-4">{note}</li>
-              ))}
-            </ul>
           </section>
 
           <section id="consult" className="scroll-mt-24">

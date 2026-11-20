@@ -57,27 +57,6 @@ export const TN_OFFERS: NetOffer[] = [
   },
 ];
 
-export interface NetProofStat {
-  label: string;
-  value: string;
-}
-
-/** Jared's own home network, measured November 19, 2026. Not a speed guarantee. */
-export const TN_PROOF_MEASURED = "November 19, 2026";
-
-export const TN_PROOF_STATS: NetProofStat[] = [
-  { label: "Download", value: "About 851 Mbps" },
-  { label: "Upload", value: "About 937 Mbps" },
-  { label: "Ping", value: "About 4 ms" },
-  { label: "Packet loss", value: "0%" },
-];
-
-export const TN_PROOF_NOTES = [
-  "Fiber in passthrough to UniFi.",
-  "Gigabit-class speeds on a phone over 6 GHz at 160 MHz.",
-  "A rogue router — a Mac sharing its connection — was causing address conflicts. Jared found it and removed it.",
-] as const;
-
 export interface NetFaq {
   q: string;
   a: string;
