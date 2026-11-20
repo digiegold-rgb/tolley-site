@@ -30,11 +30,24 @@ export async function enqueueCleanoutNotification(
   } });
 }
 
+/** Same Telegram outbox as cleanout quotes. kind "net" keeps the alert distinguishable. No schema change. */
+export async function enqueueNetNotification(
+  tx: Prisma.TransactionClient, leadId: string,
+  contact: { name: string; phone: string; city: string },
+) {
+  const message = `Tolley Net request: ${contact.name || "(no name)"} ${contact.phone || "(no phone)"}` +
+    (contact.city ? ` — ${contact.city}` : "");
+  await tx.leadNotification.createMany({ skipDuplicates: true, data: {
+    id: `net:${leadId}:telegram`, kind: "net", leadId, channel: "telegram",
+    payload: { message },
+  } });
+}
+
 /** Per-channel leases prevent parallel cron/after workers from sending together.
  * A crash after provider acceptance can redeliver; this is at-least-once delivery.
  * Never enqueue customer marketing or historical imports here. */
 async function sendNotification(row: LeadNotification) {
-  if (row.kind === "cleanout" && row.channel === "telegram") {
+  if ((row.kind === "cleanout" || row.kind === "net") && row.channel === "telegram") {
     const payload = row.payload as { message?: unknown };
     if (typeof payload.message !== "string" || !payload.message) throw new Error("Invalid cleanout notification");
     const result = await notifyTelegram(payload.message, { plainText: true });

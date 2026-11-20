@@ -35,6 +35,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/pools": 0.6,
     "/water": 0.6,
     "/vater": 0.5,
+    "/net": 0.7,
   };
 
   const homeRoute: MetadataRoute.Sitemap[number] = {
