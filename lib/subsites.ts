@@ -23,6 +23,7 @@ import { manifest as billing } from "@/app/billing/agent";
 import { manifest as blog } from "@/app/blog/agent";
 import { manifest as circle } from "@/app/circle/agent";
 import { manifest as cleanouts } from "@/app/cleanouts/agent";
+import { manifest as net } from "@/app/net/agent";
 import { manifest as crazybins } from "@/app/crazybins/agent";
 import { manifest as estate } from "@/app/estate/agent";
 import { manifest as client } from "@/app/client/agent";
@@ -77,6 +78,7 @@ const registered: SubsiteManifest[] = [
   blog,
   circle,
   cleanouts,
+  net,
   client,
   crazybins,
   estate,

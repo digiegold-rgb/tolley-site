@@ -84,6 +84,42 @@ export async function GET() {
           },
         },
       },
+      "/api/net/quote": {
+        post: {
+          operationId: "requestNetworkConsult",
+          summary: "Request a Tolley Net phone consult",
+          description: "Submit only when the customer asks to be contacted about home or gaming network setup. A name, phone number, or email is required. A successful receipt means the inquiry was saved; it is not a price, booking, or confirmed availability. Do not submit test inquiries to this production endpoint.",
+          tags: ["net", "lead"],
+          security: [],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    name: { type: "string", maxLength: 120 },
+                    phone: { type: "string", maxLength: 40 },
+                    email: { type: "string", maxLength: 200 },
+                    city: { type: "string", maxLength: 120 },
+                    problem: { type: "string", maxLength: 2000, description: "What is wrong with the network" },
+                    gaming: { type: "string", enum: ["yes", "no"] },
+                    devices: { type: "string", maxLength: 500 },
+                    preferredTime: { type: "string", maxLength: 200 },
+                  },
+                  anyOf: ["name", "phone", "email"].map(field => ({ required: [field], properties: { [field]: { type: "string", minLength: 1 } } })),
+                },
+              },
+            },
+          },
+          responses: {
+            "200": { description: "Inquiry saved", content: { "application/json": { schema: { type: "object", required: ["ok", "leadId"], properties: { ok: { type: "boolean", const: true }, leadId: { type: "string" } } } } } },
+            "400": { description: "No usable name, phone number, or email supplied" },
+            "429": { description: "Rate limit reached; wait before retrying or use the public phone contact" },
+            "500": { description: "Inquiry not confirmed saved; do not report success" },
+          },
+        },
+      },
       "/.well-known/agent-card.json": {
         get: {
           summary: "Tolley agent discovery card",

@@ -126,3 +126,25 @@ test("cited pages keep their query-shaped title, phone in the description, and a
   assert.match(discoveryText(true), /Treasure Hauls Live/);
   assert.match(discoveryText(true), /Q: What does it cost to hire you\?/);
 });
+
+test("Tolley Net is a public offering with the cleanouts phone and no invented prices", () => {
+  const net = getSubsite("net")!;
+  assert.equal(net.discovery?.disposition, "offering");
+  assert.equal(net.discovery?.phone, "913-283-3826");
+  assert.equal(net.discovery?.operator, "Jared Tolley");
+  assert.equal(net.discovery?.pricingNote, "Free consult. Custom quote after consult.");
+  assert.equal(net.pricing, undefined);
+  assert.match(net.purpose, /913-283-3826/);
+  assert.match(net.serviceArea || "", /Independence, MO/);
+  assert.match(net.serviceArea || "", /Kansas City metro/);
+  assert.ok((net.faq?.length ?? 0) >= 4);
+  const faqLd = discoveryFaqJsonLd(net)!;
+  assert.equal(faqLd["@type"], "FAQPage");
+  const text = discoveryText(true);
+  const section = text.split("\n## ").find(part => part.startsWith("Tolley Net"));
+  assert.ok(section, "llms text includes Tolley Net");
+  assert.match(section!, /913-283-3826/);
+  assert.match(section!, /Free consult/);
+  assert.doesNotMatch(section!, /\$\d/);
+  assert.ok(readFileSync("app/net/page.tsx", "utf8").includes('PublicOfferDetails name="net"'));
+});

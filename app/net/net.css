@@ -1,0 +1,17 @@
+/* Shell for /net. Component classes live in the cleanouts stylesheet and are
+   remapped to the Tolley theme when this page sits in the public frame. */
+
+.net-page {
+  --tc-bg: #0e141b;
+  --tc-panel: #141d27;
+  --tc-panel-2: #18222e;
+  --tc-line: rgba(148, 163, 184, 0.14);
+  --tc-orange: #ff7a1a;
+  --tc-orange-deep: #e5670f;
+  --tc-steel: #94a3b8;
+  background:
+    radial-gradient(ellipse 70% 45% at 50% 0%, rgba(255, 122, 26, 0.05), transparent 70%),
+    var(--tc-bg);
+  color: #e2e8f0;
+  min-height: 100vh;
+}
