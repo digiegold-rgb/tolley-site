@@ -27,6 +27,10 @@ const snapshotSchema = z.object({
   outdoor_f: temp,
   upstairs: zoneSchema,
   downstairs: zoneSchema,
+  loft_fan_on: z.boolean().nullish(),
+  loft_fan_w: z.number().finite().min(0).max(4000).nullish(),
+  loft_fan_energy_wh_total: z.number().finite().min(0).max(1_000_000_000).nullish(),
+  loft_fan_decision: z.string().max(280).nullish(),
 });
 
 const dailySchema = z.object({
@@ -114,6 +118,12 @@ function snapshotOf(input: SnapshotInput, now: Date): { ok: true; row: HeatSnaps
       outdoorF: input.outdoor_f ?? null,
       upstairs: zoneOf(input.upstairs),
       downstairs: zoneOf(input.downstairs),
+      loftFan: {
+        on: input.loft_fan_on ?? null,
+        watts: input.loft_fan_w ?? null,
+        energyWh: input.loft_fan_energy_wh_total ?? null,
+        decision: blank(input.loft_fan_decision),
+      },
     },
   };
 }

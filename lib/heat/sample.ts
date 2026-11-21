@@ -5,7 +5,7 @@ const SAMPLE_REVIEW = `## Sample review
 
 This note is built into the preview so the dashboard has something to show before Spark posts. It is not a reading from the house.
 
-Upstairs carried the cold part of the day. The loft ran a couple of degrees under the kitchen. Outdoor air sat in the 30s, and the gas estimate landed near the 0.11 CCF per degree-day baseline.
+Upstairs carried the cold part of the day. The loft sat a few degrees over the kitchen until the destratification fan ran and pulled that gap down. Outdoor air sat in the 30s, and the gas estimate landed near the 0.11 CCF per degree-day baseline.
 
 No short-cycling showed up in this sample.`;
 
@@ -63,6 +63,7 @@ export function sampleHeatRows(now: Date): HeatRows {
 
   const snapshots: HeatSnapshot[] = [];
   const start = now.getTime() - 24 * 60 * 60 * 1000;
+  let energyWh = 2500;
   for (let t = start; t <= now.getTime(); t += 10 * 60 * 1000) {
     const at = new Date(t);
     const hour = chicagoHour(at);
@@ -71,10 +72,13 @@ export function sampleHeatRows(now: Date): HeatRows {
     const outdoor = round1(36 + 8 * Math.sin(((hour - 15) / 24) * Math.PI * 2));
     const kitchen = round1(70.2 + (outdoor - 40) * 0.04 + (upHeat ? 1.1 : 0));
     const hvac: Hvac = upHeat ? "heat" : hour >= 9 && hour < 16 ? "fan" : "off";
+    const fanOn = hour >= 11 && hour < 17;
+    const stratification = fanOn ? 0.6 : 3.4;
+    if (fanOn) energyWh += 6;
     snapshots.push({
       recordedAt: at.toISOString(),
       kitchenF: kitchen,
-      loftF: round1(kitchen - 2.6),
+      loftF: round1(kitchen + stratification),
       kitchenRh: 38,
       loftRh: 36,
       outdoorF: outdoor,
@@ -84,6 +88,12 @@ export function sampleHeatRows(now: Date): HeatRows {
         mode: "heat",
         hvac: downHeat ? "heat" : "off",
         fanMode: null,
+      },
+      loftFan: {
+        on: fanOn,
+        watts: fanOn ? 36 : 0,
+        energyWh,
+        decision: fanOn ? `on: loft-living ${stratification.toFixed(1)}F, heat ${upHeat ? "on" : "off"}` : "off: quiet hours",
       },
     });
   }

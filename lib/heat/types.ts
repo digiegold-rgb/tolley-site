@@ -7,6 +7,21 @@ export type Zone = {
   fanMode: string | null;
 };
 
+/** Airius loft fan on the Shelly plug. Nulls mean this snapshot did not report the fan. */
+export type LoftFanReading = {
+  on: boolean | null;
+  watts: number | null;
+  energyWh: number | null;
+  decision: string | null;
+};
+
+export const EMPTY_LOFT_FAN: LoftFanReading = {
+  on: null,
+  watts: null,
+  energyWh: null,
+  decision: null,
+};
+
 export type HeatSnapshot = {
   recordedAt: string;
   kitchenF: number | null;
@@ -16,6 +31,7 @@ export type HeatSnapshot = {
   outdoorF: number | null;
   upstairs: Zone;
   downstairs: Zone;
+  loftFan: LoftFanReading;
 };
 
 export type HeatDay = {
@@ -56,6 +72,40 @@ export type HeatTotals = {
   costLow: number | null;
   costHigh: number | null;
   hdd65: number | null;
+  /** Loft-fan electricity added into costLow / costHigh when fanCost is above zero. */
+  fanRuntimeH: number;
+  fanKwh: number | null;
+  fanCost: number | null;
+};
+
+export type FanEnergySource = "meter" | "watts" | "nameplate" | "none";
+
+export type FanDayPoint = {
+  date: string;
+  runtimeH: number;
+  cycles: number;
+  kwh: number | null;
+  cost: number | null;
+  source: FanEnergySource;
+};
+
+export type FanEffectPoint = {
+  t: string;
+  kitchenF: number | null;
+  loftF: number | null;
+  /** Loft minus kitchen. Positive means the loft is warmer. */
+  gapF: number | null;
+  fanOn: boolean | null;
+};
+
+export type LoftFanView = {
+  hasData: boolean;
+  rateUsdPerKwh: number;
+  nameplateW: number;
+  now: { on: boolean | null; watts: number | null; decision: string | null } | null;
+  today: FanDayPoint;
+  days: FanDayPoint[];
+  series: FanEffectPoint[];
 };
 
 export type HeatSeriesPoint = {
@@ -96,12 +146,16 @@ export type HeatView = {
   } | null;
   today: {
     date: string;
+    /** Gas only. The card shows energyCostLow / energyCostHigh, which add the loft fan. */
     costLow: number | null;
     costHigh: number | null;
+    energyCostLow: number | null;
+    energyCostHigh: number | null;
     source: "reported" | "estimated" | "none";
     upstairsHeatH: number;
     downstairsHeatH: number;
   };
+  fan: LoftFanView;
   series24h: HeatSeriesPoint[];
   days: HeatDayPoint[];
   week: HeatTotals;
