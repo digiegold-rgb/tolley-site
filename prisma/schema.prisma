@@ -6718,22 +6718,27 @@ model WdActivitySnapshot {
 }
 
 /// Spark pushes a furnace snapshot about every 5 minutes. Ingest keeps 90 days.
+/// Loft-fan columns are optional; snapshots from before the Airius fan omit them.
 model HeatSnapshot {
-  recordedAt   DateTime @id
-  kitchenF     Float?
-  loftF        Float?
-  kitchenRh    Float?
-  loftRh       Float?
-  outdoorF     Float?
-  upSetpoint   Float?
-  upMode       String?
-  upHvac       String
-  upFanMode    String?
-  downSetpoint Float?
-  downMode     String?
-  downHvac     String
-  downFanMode  String?
-  receivedAt   DateTime @default(now())
+  recordedAt       DateTime @id
+  kitchenF         Float?
+  loftF            Float?
+  kitchenRh        Float?
+  loftRh           Float?
+  outdoorF         Float?
+  upSetpoint       Float?
+  upMode           String?
+  upHvac           String
+  upFanMode        String?
+  downSetpoint     Float?
+  downMode         String?
+  downHvac         String
+  downFanMode      String?
+  loftFanOn        Boolean?
+  loftFanW         Float?
+  loftFanEnergyWh  Float?
+  loftFanDecision  String?
+  receivedAt       DateTime @default(now())
 }
 
 /// One row per calendar day. Kept indefinitely; Spark may upsert the same date.

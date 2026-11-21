@@ -3,7 +3,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import type { HeatBatch, HeatDay, HeatRows, HeatSnapshot, Hvac } from "./types";
 import { sampleHeatRows } from "./sample";
-import { SNAPSHOT_RETENTION_MS } from "./time";
+import { FAN_HISTORY_DAYS, SNAPSHOT_RETENTION_MS } from "./time";
 import { buildHeatView, emptyHeatView } from "./view";
 import type { HeatView } from "./types";
 
@@ -22,6 +22,10 @@ type SnapshotRow = {
   downMode: string | null;
   downHvac: string;
   downFanMode: string | null;
+  loftFanOn: boolean | null;
+  loftFanW: number | null;
+  loftFanEnergyWh: number | null;
+  loftFanDecision: string | null;
 };
 
 function hvacOf(value: string): Hvac {
@@ -48,6 +52,12 @@ function fromSnapshot(row: SnapshotRow): HeatSnapshot {
       hvac: hvacOf(row.downHvac),
       fanMode: row.downFanMode,
     },
+    loftFan: {
+      on: row.loftFanOn,
+      watts: row.loftFanW,
+      energyWh: row.loftFanEnergyWh,
+      decision: row.loftFanDecision,
+    },
   };
 }
 
@@ -67,6 +77,10 @@ function snapshotData(row: HeatSnapshot) {
     downMode: row.downstairs.mode,
     downHvac: row.downstairs.hvac,
     downFanMode: row.downstairs.fanMode,
+    loftFanOn: row.loftFan.on,
+    loftFanW: row.loftFan.watts,
+    loftFanEnergyWh: row.loftFan.energyWh,
+    loftFanDecision: row.loftFan.decision,
   };
 }
 
@@ -90,7 +104,7 @@ function dayData(row: HeatDay) {
 }
 
 export async function readHeatRows(now: Date): Promise<HeatRows> {
-  const since = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const since = new Date(now.getTime() - FAN_HISTORY_DAYS * 24 * 60 * 60 * 1000);
   const [latest, snapshots, days, review] = await Promise.all([
     prisma.heatSnapshot.findFirst({ orderBy: { recordedAt: "desc" } }),
     prisma.heatSnapshot.findMany({ where: { recordedAt: { gte: since } }, orderBy: { recordedAt: "asc" } }),

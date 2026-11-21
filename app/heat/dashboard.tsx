@@ -4,17 +4,21 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { HeatTotals, HeatView, Zone } from "@/lib/heat/types";
+import type { FanEnergySource, HeatTotals, HeatView, Zone } from "@/lib/heat/types";
 import {
   formatAge,
   formatChicagoTime,
   formatCostRange,
+  formatElectricRate,
   formatHours,
+  formatKwh,
+  formatRuntime,
   formatShortDate,
   formatTemp,
+  formatUsd,
   statusLabel,
 } from "@/lib/heat/format";
-import { CcfChart, DailyChart, TempChart } from "./charts";
+import { CcfChart, DailyChart, FanDailyChart, FanEffectChart, TempChart } from "./charts";
 
 function tone(hvac: Zone["hvac"]): string {
   if (hvac === "heat") return "text-amber-300";
@@ -57,6 +61,13 @@ function TotalCard({ totals }: { totals: HeatTotals }) {
       <p className="text-sm text-white/80">Downstairs {formatHours(totals.downstairsHeatH)}</p>
       <p className="mt-2 font-mono text-2xl">{formatCostRange(totals.costLow, totals.costHigh)}</p>
       <p className="mt-1 text-xs text-white/45">{totals.hdd65 == null ? "HDD —" : `HDD ${totals.hdd65.toFixed(1)}`}</p>
+      {totals.fanCost != null && (totals.fanRuntimeH > 0 || totals.fanCost > 0) ? (
+        <p className="mt-1 text-xs text-white/45">
+          Includes loft fan {formatRuntime(totals.fanRuntimeH)}
+          {totals.fanKwh != null ? ` · ${formatKwh(totals.fanKwh)}` : ""}
+          {totals.fanCost > 0 ? ` · ${formatUsd(totals.fanCost)}` : ""}
+        </p>
+      ) : null}
     </article>
   );
 }
@@ -69,6 +80,13 @@ function baselineSentence(ccf: HeatView["ccf"]): string {
   if (pct < 0.5) return "Recent average matches the 0.11 baseline.";
   const dir = ccf.versusBaseline < 0 ? "under" : "over";
   return `Recent average is ${pct.toFixed(0)}% ${dir} the 0.11 baseline.`;
+}
+
+function fanEnergyNote(source: FanEnergySource, nameplateW: number): string {
+  if (source === "meter") return "Energy from the plug’s watt-hour counter.";
+  if (source === "watts") return "Energy from the plug’s watt readings.";
+  if (source === "nameplate") return `Energy estimated at ${nameplateW} W while the fan is on.`;
+  return "";
 }
 
 export function HeatDashboard({ initial, unavailable = false }: { initial: HeatView; unavailable?: boolean }) {
@@ -101,12 +119,19 @@ export function HeatDashboard({ initial, unavailable = false }: { initial: HeatV
 
   const latest = view.latest;
   const stale = latest != null && latest.ageSec > 20 * 60;
+  const fanCost = view.fan.today.cost;
+  const includeFan = fanCost != null && fanCost > 0;
   const todayDetail =
-    view.today.source === "reported"
+    (view.today.source === "reported"
       ? `Reported today · upstairs ${formatHours(view.today.upstairsHeatH)} · downstairs ${formatHours(view.today.downstairsHeatH)}`
       : view.today.source === "estimated"
         ? `Estimated so far · upstairs ${formatHours(view.today.upstairsHeatH)} · downstairs ${formatHours(view.today.downstairsHeatH)}`
-        : "No gas estimate yet";
+        : "No gas estimate yet") + (includeFan ? ` · loft fan ${formatUsd(fanCost)}` : "");
+  const fanNow = view.fan.now;
+  const fanOn = fanNow?.on;
+  const fanLabel = fanNow == null ? "No reading" : fanOn == null ? "Unknown" : fanOn ? "On" : "Off";
+  const fanTone = fanOn ? "text-emerald-300" : "text-white/70";
+  const fanNote = fanEnergyNote(view.fan.today.source, view.fan.nameplateW);
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-6 text-white">
@@ -150,9 +175,62 @@ export function HeatDashboard({ initial, unavailable = false }: { initial: HeatV
       </section>
 
       <section className="mt-3 rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.03] p-4">
-        <h2 className="text-sm text-white/55">Today’s gas</h2>
-        <p className="mt-1 font-mono text-4xl tracking-tight">{formatCostRange(view.today.costLow, view.today.costHigh)}</p>
+        <h2 className="text-sm text-white/55">{includeFan ? "Today’s energy" : "Today’s gas"}</h2>
+        <p className="mt-1 font-mono text-4xl tracking-tight">{formatCostRange(view.today.energyCostLow, view.today.energyCostHigh)}</p>
         <p className="mt-1 text-sm text-white/60">{todayDetail}</p>
+      </section>
+
+      <section className="mt-6">
+        <h2 className="text-xs uppercase tracking-[0.16em] text-white/45">Loft fan</h2>
+        {!view.fan.hasData ? (
+          <div className="mt-2 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <p className="text-sm text-white/50">No loft fan readings yet. The Airius fan shows up here once Spark sends it.</p>
+          </div>
+        ) : (
+          <>
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              <article className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-sm text-white/55">Now</h3>
+                  <span className={`text-sm font-semibold ${fanTone}`}>{fanLabel}</span>
+                </div>
+                <p className="mt-2 font-mono text-3xl tracking-tight">{fanNow?.watts == null ? "—" : `${Math.round(fanNow.watts)} W`}</p>
+                <p className="mt-1 break-words text-xs text-white/45">{fanNow?.decision || "Loft destratification fan"}</p>
+              </article>
+              <article className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                <h3 className="text-sm text-white/55">Today</h3>
+                {view.fan.today.kwh == null && view.fan.today.runtimeH === 0 && view.fan.today.cycles === 0 ? (
+                  <p className="mt-2 text-sm text-white/50">No reading yet today.</p>
+                ) : (
+                  <>
+                    <p className="mt-2 font-mono text-3xl tracking-tight">{formatRuntime(view.fan.today.runtimeH)}</p>
+                    <p className="mt-1 text-sm text-white/70">
+                      {view.fan.today.cycles} on-cycle{view.fan.today.cycles === 1 ? "" : "s"}
+                    </p>
+                    <p className="mt-1 text-sm text-white/80">
+                      {formatKwh(view.fan.today.kwh)}
+                      {view.fan.today.cost == null ? "" : ` · ${formatUsd(view.fan.today.cost)}`}
+                    </p>
+                  </>
+                )}
+                <p className="mt-1 text-xs text-white/40">at {formatElectricRate(view.fan.rateUsdPerKwh)}</p>
+                {fanNote ? <p className="mt-1 text-xs text-white/40">{fanNote}</p> : null}
+              </article>
+            </div>
+            <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+              <h3 className="text-sm text-white/55">Loft gap while the fan runs</h3>
+              <div className="mt-2">
+                <FanEffectChart points={view.fan.series} />
+              </div>
+            </div>
+            <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+              <h3 className="text-sm text-white/55">Runtime by day</h3>
+              <div className="mt-2">
+                <FanDailyChart days={view.fan.days} />
+              </div>
+            </div>
+          </>
+        )}
       </section>
 
       <section className="mt-6">

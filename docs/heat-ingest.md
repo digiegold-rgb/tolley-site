@@ -17,7 +17,7 @@ Set these in Vercel (Production, and Preview if you use it). Do not commit them.
 
 Optional: `HEAT_SAMPLE=1` shows built-in sample rows when the tables are empty or unreachable. Preview deployments do that automatically. Production does not.
 
-Apply `prisma/migrations/20261118150000_heat_dashboard` before the first real push. It only creates `HeatSnapshot`, `HeatDay`, and `HeatReview`.
+Apply `prisma/migrations/20261118150000_heat_dashboard` before the first real push. It only creates `HeatSnapshot`, `HeatDay`, and `HeatReview`. Apply `prisma/migrations/20261121210000_heat_loft_fan` before the loft fan fields are stored. It adds nullable columns on `HeatSnapshot` and does not change existing rows.
 
 ```bash
 npx prisma migrate deploy
@@ -57,11 +57,26 @@ Success:
   "loft_rh": 36,
   "outdoor_f": 34.0,
   "upstairs": { "setpoint": 70, "mode": "heat", "hvac": "heat", "fan_mode": "auto" },
-  "downstairs": { "setpoint": 68, "mode": "heat", "hvac": "off" }
+  "downstairs": { "setpoint": 68, "mode": "heat", "hvac": "off" },
+  "loft_fan_on": true,
+  "loft_fan_w": 36,
+  "loft_fan_energy_wh_total": 18420.5,
+  "loft_fan_decision": "on: loft-living 3.4F, heat on"
 }
 ```
 
 `kitchen_f`, `loft_f`, `kitchen_rh`, `loft_rh`, and `outdoor_f` may be null. Both zones are required. `fan_mode` is optional.
+
+The four `loft_fan_*` fields are optional. Omit them, or send null, and the row is stored like a snapshot from before the Airius fan. A payload that includes them replaces that timestamp's previous fan values.
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `loft_fan_on` | boolean | Shelly plug on/off. JSON `true` / `false`, not `1` / `0`. |
+| `loft_fan_w` | number | Instantaneous watts. `0` when the plug is on but the load is idle. `0`–`4000`. |
+| `loft_fan_energy_wh_total` | number | Cumulative watt-hours from the plug, not kilowatt-hours. The counter may grow for the life of the plug. `0`–`1000000000`. |
+| `loft_fan_decision` | string | Why the controller turned the fan on or off, up to 280 characters. Example: `on: loft-living 3.4F, heat on` or `off: quiet hours`. |
+
+Kitchen (`kitchen_f`) is the living-room temperature. Loft is `loft_f`. The page does not need a separate living-room field.
 
 ### Daily row
 
@@ -110,7 +125,11 @@ Heat hours and cycle counts are required. The estimate fields may be omitted. Up
       "loft_rh": 36,
       "outdoor_f": 34.0,
       "upstairs": { "setpoint": 70, "mode": "heat", "hvac": "heat", "fan_mode": "auto" },
-      "downstairs": { "setpoint": 68, "mode": "heat", "hvac": "off" }
+      "downstairs": { "setpoint": 68, "mode": "heat", "hvac": "off" },
+      "loft_fan_on": false,
+      "loft_fan_w": 0,
+      "loft_fan_energy_wh_total": 18420.5,
+      "loft_fan_decision": "off: quiet hours"
     }
   ],
   "days": [
@@ -162,3 +181,4 @@ Use the current time in production. The timestamp above is only an example and i
 - Week (Monday–today) and month totals sum the daily rows, plus today's in-progress estimate when that day has not been reported.
 - CCF per degree-day is the recent average of `ccf_per_hdd` against a 0.11 baseline.
 - The newest review is rendered as markdown.
+- The loft fan (Airius, about 36 W on a Shelly plug) uses the optional snapshot fields above. On/off now, runtime today, on-cycles, and runtime for recent Chicago days are counted from `loft_fan_on`. A gap longer than 20 minutes is not counted as runtime. Electricity prefers `loft_fan_energy_wh_total` (cumulative Wh, split across midnight by time). If that counter is missing, the page integrates `loft_fan_w`, and if watts are missing too it uses 36 W while the fan is on. Dollars are kWh times `ELECTRIC_USD_PER_KWH` in `lib/heat/time.ts` ($0.12495/kWh, Evergy Missouri Metro winter first-block energy charge). That electric cost is added to today's energy total and to the week and month dollar totals. The fan-effect chart plots kitchen and loft plus loft-minus-kitchen, with fan-on periods shaded. Until Spark sends the fields, the section says there are no loft fan readings yet.

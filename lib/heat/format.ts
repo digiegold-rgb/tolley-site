@@ -23,6 +23,30 @@ export function formatHours(n: number): string {
   return `${n.toFixed(1)} h`;
 }
 
+export function formatRuntime(hours: number): string {
+  if (hours < 1 / 60) return "0 min";
+  if (hours < 1) return `${Math.round(hours * 60)} min`;
+  return formatHours(hours);
+}
+
+export function formatKwh(n: number | null): string {
+  if (n == null) return "—";
+  if (n === 0) return "0 kWh";
+  return `${n.toFixed(n < 10 ? 3 : 1)} kWh`;
+}
+
+export function formatGap(n: number | null): string {
+  if (n == null) return "—";
+  const sign = n > 0 ? "+" : "";
+  return `${sign}${n.toFixed(1)}°`;
+}
+
+/** `0.12495` → `12.495¢/kWh`. */
+export function formatElectricRate(usdPerKwh: number): string {
+  const text = (usdPerKwh * 100).toFixed(3).replace(/\.?0+$/, "");
+  return `${text}¢/kWh`;
+}
+
 export function formatTemp(n: number | null): string {
   if (n == null) return "—";
   return `${n.toFixed(1)}°`;
