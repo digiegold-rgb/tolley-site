@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { createHmac } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
@@ -297,6 +297,13 @@ describe("heat ingest parse", () => {
     assert.match(read("docs/heat-ingest.md"), /0\.12495/);
     assert.match(read("prisma/schema.prisma"), /loftFanEnergyWh/);
     assert.match(read("prisma/migrations/20261121210000_heat_loft_fan/migration.sql"), /loftFanOn/);
+    const sql = read("prisma/migrations/20261121210000_heat_loft_fan/migration.sql");
+    const checksum = createHash("sha256").update(sql).digest("hex");
+    assert.equal(checksum, "5993f124492bd8ac63d518d5211c19873ef4c32359072fb3a26196c9489844c7");
+    assert.match(read("lib/heat/ensure-columns.ts"), new RegExp(checksum));
+    for (const column of ["loftFanOn", "loftFanW", "loftFanEnergyWh", "loftFanDecision"]) {
+      assert.match(read("lib/heat/ensure-columns.ts"), new RegExp(column));
+    }
   });
 });
 
