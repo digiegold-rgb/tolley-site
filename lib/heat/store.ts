@@ -3,6 +3,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import type { HeatBatch, HeatDay, HeatRows, HeatSnapshot, Hvac } from "./types";
 import { sampleHeatRows } from "./sample";
+import { ensureLoftFanColumns } from "./ensure-columns";
 import { FAN_HISTORY_DAYS, SNAPSHOT_RETENTION_MS } from "./time";
 import { buildHeatView, emptyHeatView } from "./view";
 import type { HeatView } from "./types";
@@ -104,6 +105,7 @@ function dayData(row: HeatDay) {
 }
 
 export async function readHeatRows(now: Date): Promise<HeatRows> {
+  await ensureLoftFanColumns();
   const since = new Date(now.getTime() - FAN_HISTORY_DAYS * 24 * 60 * 60 * 1000);
   const [latest, snapshots, days, review] = await Promise.all([
     prisma.heatSnapshot.findFirst({ orderBy: { recordedAt: "desc" } }),
@@ -164,6 +166,7 @@ export async function saveHeatIngest(batch: HeatBatch, now = new Date()): Promis
   reviews: number;
   pruned: number;
 }> {
+  await ensureLoftFanColumns();
   const cutoff = new Date(now.getTime() - SNAPSHOT_RETENTION_MS);
   const pruned = await prisma.$transaction(
     async (tx) => {
