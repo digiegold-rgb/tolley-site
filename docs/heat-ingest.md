@@ -182,3 +182,20 @@ Use the current time in production. The timestamp above is only an example and i
 - CCF per degree-day is the recent average of `ccf_per_hdd` against a 0.11 baseline.
 - The newest review is rendered as markdown.
 - The loft fan (Airius, about 36 W on a Shelly plug) uses the optional snapshot fields above. On/off now, runtime today, on-cycles, and runtime for recent Chicago days are counted from `loft_fan_on`. A gap longer than 20 minutes is not counted as runtime. Electricity prefers `loft_fan_energy_wh_total` (cumulative Wh, split across midnight by time). If that counter is missing, the page integrates `loft_fan_w`, and if watts are missing too it uses 36 W while the fan is on. Dollars are kWh times `ELECTRIC_USD_PER_KWH` in `lib/heat/time.ts` ($0.12495/kWh, Evergy Missouri Metro winter first-block energy charge). That electric cost is added to today's energy total and to the week and month dollar totals. The fan-effect chart plots kitchen and loft plus loft-minus-kitchen, with fan-on periods shaded. Until Spark sends the fields, the section says there are no loft fan readings yet.
+
+### Humidifiers (optional)
+
+Two Honeywell HE360A1075 fan-powered whole-home humidifiers share one Shelly 1 Mini relay, so they always run together. Spark's `humid.service` decides when the relay is on (heat call, or house fan circulating while the kitchen RH is under target). All humidifier fields are optional; older payloads keep working.
+
+Snapshot fields:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `humid_on` | boolean | Relay on/off right now. |
+| `humid_target_rh` | number | Current RH target in percent (60%, lowered as it gets colder outside). |
+| `humid_today_h` | number | Spark's running relay-on hours for this Chicago day. |
+| `humid_decision` | string | Why the relay is on or off, up to 280 characters. |
+
+Daily row fields: `humid_on_h` (relay-on hours), `humid_cycles`, `humid_kwh`, `humid_cost` (dollars), `humid_water_gal`.
+
+The page prices humidifier runtime at 2 × 90 W (`HUMIDIFIER_UNITS`, `HUMIDIFIER_W_EACH` in `lib/heat/time.ts`: nameplate 120 VAC 0.7 A plus the 24 V solenoid) times `ELECTRIC_USD_PER_KWH`, and uses Spark's `humid_kwh` / `humid_cost` when sent. Today's runtime prefers the live `humid_today_h`, then today's daily row, then the 5-minute snapshots. The humidifier cost is shown on its own "Humidifier power" card and is added to today's energy and to the week and month dollar totals. Apply `prisma/migrations/20261122220000_heat_humidifier` (nullable columns only); the app also adds the columns on first use.

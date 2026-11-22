@@ -31,6 +31,10 @@ const snapshotSchema = z.object({
   loft_fan_w: z.number().finite().min(0).max(4000).nullish(),
   loft_fan_energy_wh_total: z.number().finite().min(0).max(1_000_000_000).nullish(),
   loft_fan_decision: z.string().max(280).nullish(),
+  humid_on: z.boolean().nullish(),
+  humid_target_rh: rh,
+  humid_today_h: z.number().finite().min(0).max(24.5).nullish(),
+  humid_decision: z.string().max(280).nullish(),
 });
 
 const dailySchema = z.object({
@@ -48,6 +52,11 @@ const dailySchema = z.object({
   est_cost_low: z.number().finite().min(0).max(2000).nullish(),
   est_cost_high: z.number().finite().min(0).max(2000).nullish(),
   ccf_per_hdd: z.number().finite().min(0).max(5).nullish(),
+  humid_on_h: z.number().finite().min(0).max(24.5).nullish(),
+  humid_cycles: z.number().int().min(0).max(2000).nullish(),
+  humid_kwh: z.number().finite().min(0).max(1000).nullish(),
+  humid_cost: z.number().finite().min(0).max(1000).nullish(),
+  humid_water_gal: z.number().finite().min(0).max(10000).nullish(),
 });
 
 const reviewSchema = z.object({
@@ -124,6 +133,12 @@ function snapshotOf(input: SnapshotInput, now: Date): { ok: true; row: HeatSnaps
         energyWh: input.loft_fan_energy_wh_total ?? null,
         decision: blank(input.loft_fan_decision),
       },
+      humid: {
+        on: input.humid_on ?? null,
+        targetRh: input.humid_target_rh ?? null,
+        todayH: input.humid_today_h ?? null,
+        decision: blank(input.humid_decision),
+      },
     },
   };
 }
@@ -153,6 +168,11 @@ function dayOf(input: DailyInput, now: Date): { ok: true; row: HeatDay } | { ok:
       estCostLow: input.est_cost_low ?? null,
       estCostHigh: input.est_cost_high ?? null,
       ccfPerHdd: input.ccf_per_hdd ?? null,
+      humidOnH: input.humid_on_h ?? null,
+      humidCycles: input.humid_cycles ?? null,
+      humidKwh: input.humid_kwh ?? null,
+      humidCost: input.humid_cost ?? null,
+      humidWaterGal: input.humid_water_gal ?? null,
     },
   };
 }

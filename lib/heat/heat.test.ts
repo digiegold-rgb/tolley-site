@@ -526,3 +526,102 @@ function restore(name: string, value: string | undefined) {
   if (value === undefined) delete process.env[name];
   else process.env[name] = value;
 }
+
+describe("humidifiers", () => {
+  const today = chicagoDate(now);
+  const withHumid = (iso: string, on: boolean | null, todayH: number | null = null): HeatSnapshot => ({
+    ...snap(iso, "heat"),
+    humid: { on, targetRh: 60, todayH, decision: on ? "on: heating:honeywell" : "off: idle" },
+  });
+
+  it("accepts optional humidifier fields on snapshots and daily rows", () => {
+    const parsed = parseHeatBody(
+      {
+        snapshots: [
+          {
+            timestamp: "2026-11-18T20:00:00Z",
+            upstairs: { hvac: "heat" },
+            downstairs: { hvac: "off" },
+            humid_on: true,
+            humid_target_rh: 60,
+            humid_today_h: 1.25,
+            humid_decision: "on: circulate:upstairs_fan",
+          },
+        ],
+        days: [
+          { date: "2026-11-17", upstairs_heat_h: 2, downstairs_heat_h: 1, upstairs_cycles: 3, downstairs_cycles: 2,
+            humid_on_h: 2.95, humid_cycles: 26, humid_kwh: 0.531, humid_cost: 0.066, humid_water_gal: 20.6 },
+        ],
+      },
+      now,
+    );
+    assert.equal(parsed.ok, true);
+    assert.deepEqual(parsed.ok && parsed.batch.snapshots[0].humid, {
+      on: true,
+      targetRh: 60,
+      todayH: 1.25,
+      decision: "on: circulate:upstairs_fan",
+    });
+    assert.equal(parsed.ok && parsed.batch.days[0].humidOnH, 2.95);
+    assert.equal(parsed.ok && parsed.batch.days[0].humidCycles, 26);
+    const legacy = parseHeatBody({ timestamp: "2026-11-18T20:00:00Z", upstairs: { hvac: "off" }, downstairs: { hvac: "off" } }, now);
+    assert.deepEqual(legacy.ok && legacy.batch.snapshots[0].humid, { on: null, targetRh: null, todayH: null, decision: null });
+  });
+
+  it("prices runtime at 2 x 90 W and adds it to today's energy and the period totals", () => {
+    const view = buildHeatView(
+      {
+        latest: null,
+        snapshots: [withHumid("2026-11-18T19:00:00.000Z", true, 1.5), withHumid("2026-11-18T20:05:00.000Z", false, 2)],
+        days: [
+          day({ date: "2026-11-17", upstairsHeatH: 2, estCostLow: 1, estCostHigh: 2, humidOnH: 3, humidCycles: 4 }),
+        ],
+        review: null,
+      },
+      now,
+    );
+    assert.equal(view.humid.hasData, true);
+    assert.equal(view.humid.watts, 180);
+    assert.equal(view.humid.today.source, "live");
+    assert.equal(view.humid.today.runtimeH, 2);
+    assert.equal(view.humid.today.kwh, 0.36);
+    assert.equal(view.humid.today.cost, Math.round(0.36 * ELECTRIC_USD_PER_KWH * 100) / 100);
+    assert.equal(view.humid.today.waterGal, 14);
+    assert.equal(view.humid.now?.on, false);
+    assert.equal(view.humid.now?.targetRh, 60);
+    const yesterday = view.humid.days.find((d) => d.date === "2026-11-17");
+    assert.equal(yesterday?.kwh, 0.54);
+    assert.equal(view.week.humidRuntimeH, 5);
+    assert.equal(view.week.humidKwh, 0.9);
+    assert.ok((view.week.humidCost ?? 0) > 0.1);
+    assert.equal(view.today.date, today);
+    assert.ok((view.today.energyCostLow ?? 0) >= (view.today.costLow ?? 0) + (view.humid.today.cost ?? 0) - 0.001);
+  });
+
+  it("falls back to snapshot runtime when Spark sent no live counter", () => {
+    const view = buildHeatView(
+      {
+        latest: null,
+        snapshots: [withHumid("2026-11-18T19:00:00.000Z", true), withHumid("2026-11-18T19:30:00.000Z", false)],
+        days: [],
+        review: null,
+      },
+      now,
+    );
+    assert.equal(view.humid.today.source, "estimated");
+    assert.equal(view.humid.today.runtimeH, 0.33);
+  });
+
+  it("documents and migrates the humidifier columns", () => {
+    for (const field of ["humid_on", "humid_target_rh", "humid_today_h", "humid_decision", "humid_on_h", "humid_kwh", "humid_cost", "humid_water_gal"]) {
+      assert.match(read("docs/heat-ingest.md"), new RegExp(field));
+    }
+    const sql = read("prisma/migrations/20261122220000_heat_humidifier/migration.sql");
+    const checksum = createHash("sha256").update(sql).digest("hex");
+    assert.match(read("lib/heat/ensure-columns.ts"), new RegExp(checksum));
+    for (const column of ["humidOn", "humidTargetRh", "humidTodayH", "humidDecision", "humidOnH", "humidCycles", "humidKwh", "humidCost", "humidWaterGal"]) {
+      assert.match(read("prisma/schema.prisma"), new RegExp(column));
+      assert.match(read("lib/heat/ensure-columns.ts"), new RegExp(`"${column}"`));
+    }
+  });
+});

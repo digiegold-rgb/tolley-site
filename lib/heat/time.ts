@@ -19,6 +19,16 @@ export const LOFT_FAN_NAMEPLATE_W = 36;
  * https://www.evergy.com/-/media/documents/billing/missouri/detailed_tariffs_mo/mo-metro-rate.pdf
  */
 export const ELECTRIC_USD_PER_KWH = 0.12495;
+/**
+ * Whole-home humidifiers: two Honeywell HE360A1075 fan-powered units on one Shelly relay,
+ * so they always run together. Nameplate is 120 VAC 0.7 A (84 VA) each, plus about 6 W
+ * for the 24 V transformer and water solenoid, so 90 W each is a ceiling, not a meter.
+ * Each flushes about 3.5 gal/h through the pad while running (most goes to the drain).
+ * https://pdf.lowes.com/productdocuments/11fc8004-ce3d-4bd2-b83c-e18e08059e17/61031099.pdf
+ */
+export const HUMIDIFIER_UNITS = 2;
+export const HUMIDIFIER_W_EACH = 90;
+export const HUMIDIFIER_GPH_EACH = 3.5;
 
 export function chicagoDate(now: Date): string {
   return new Intl.DateTimeFormat("en-CA", {

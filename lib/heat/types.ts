@@ -22,6 +22,15 @@ export const EMPTY_LOFT_FAN: LoftFanReading = {
   decision: null,
 };
 
+/** Whole-home humidifier relay. Optional: older snapshots did not report it. */
+export type HumidReading = {
+  on: boolean | null;
+  targetRh: number | null;
+  /** Spark's running relay-on hours for this Chicago day. */
+  todayH: number | null;
+  decision: string | null;
+};
+
 export type HeatSnapshot = {
   recordedAt: string;
   kitchenF: number | null;
@@ -32,6 +41,7 @@ export type HeatSnapshot = {
   upstairs: Zone;
   downstairs: Zone;
   loftFan: LoftFanReading;
+  humid?: HumidReading;
 };
 
 export type HeatDay = {
@@ -49,6 +59,11 @@ export type HeatDay = {
   estCostLow: number | null;
   estCostHigh: number | null;
   ccfPerHdd: number | null;
+  humidOnH?: number | null;
+  humidCycles?: number | null;
+  humidKwh?: number | null;
+  humidCost?: number | null;
+  humidWaterGal?: number | null;
 };
 
 export type HeatReview = {
@@ -76,6 +91,35 @@ export type HeatTotals = {
   fanRuntimeH: number;
   fanKwh: number | null;
   fanCost: number | null;
+  /** Humidifier electricity, also added into costLow / costHigh when above zero. */
+  humidRuntimeH: number;
+  humidKwh: number | null;
+  humidCost: number | null;
+};
+
+export type HumidDayPoint = {
+  date: string;
+  runtimeH: number;
+  cycles: number | null;
+  kwh: number | null;
+  cost: number | null;
+  waterGal: number | null;
+};
+
+export type HumidView = {
+  hasData: boolean;
+  units: number;
+  watts: number;
+  rateUsdPerKwh: number;
+  now: {
+    on: boolean | null;
+    targetRh: number | null;
+    decision: string | null;
+    rh: number | null;
+    recordedAt: string;
+  } | null;
+  today: HumidDayPoint & { source: "live" | "reported" | "estimated" | "none" };
+  days: HumidDayPoint[];
 };
 
 export type FanEnergySource = "meter" | "watts" | "nameplate" | "none";
@@ -156,6 +200,7 @@ export type HeatView = {
     downstairsHeatH: number;
   };
   fan: LoftFanView;
+  humid: HumidView;
   series24h: HeatSeriesPoint[];
   days: HeatDayPoint[];
   week: HeatTotals;
