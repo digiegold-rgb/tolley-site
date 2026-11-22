@@ -1,6 +1,6 @@
 # Public responsiveness and AI discovery audit — November 22, 2026
 
-Status: fixes prepared in `codex/public-discovery-audit-20261122`; not deployed. GitHub's saved workstation token was rejected with HTTP 401. Reauthenticate before pushing or creating the release PR.
+Status: fixes validated in `codex/public-discovery-audit-20261122`; publication in progress. The owner refreshed GitHub authorization on November 22. Live verification follows deployment.
 
 ## Scope and live evidence
 
