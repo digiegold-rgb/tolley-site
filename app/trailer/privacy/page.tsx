@@ -4,6 +4,7 @@ import Link from "next/link";
 import { TR_BRAND, TR_COMPANY, TR_CONTACT_EMAIL, TR_CONTACT_PHONE } from "@/lib/trailer";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/trailer/privacy" },
   title: "Privacy Policy | Trailer Rental",
   description:
     "Privacy Policy for Trailer Rental by Your KC Homes LLC. How we handle your information.",

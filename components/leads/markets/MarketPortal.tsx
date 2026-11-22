@@ -170,8 +170,8 @@ export default function MarketPortal({ initialSnapshot, initialSignals, initialD
     <PeriodContext.Provider value={{ days: periodDays, setDays: setPeriodDays }}>
       <div className="space-y-4">
         {/* Tab bar + period selector */}
-        <div className="flex items-center justify-between border-b border-white/10 pb-px">
-          <div className="flex gap-1">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-2">
+          <div className="flex min-w-0 flex-wrap gap-1">
             {tabs.map((t) => (
               <button
                 key={t.id}
@@ -231,14 +231,10 @@ export default function MarketPortal({ initialSnapshot, initialSignals, initialD
               </div>
             </div>
 
-            {/* Active Signals — horizontal scroll */}
+            {/* Signal cards wrap to the available screen width. */}
             <div>
               <h3 className="text-xs font-medium text-white/50 mb-2">Active Signals</h3>
-              <div className="overflow-x-auto pb-2">
-                <div className="min-w-max">
-                  <SignalPanel signals={signals} />
-                </div>
-              </div>
+              <SignalPanel signals={signals} />
             </div>
 
             {/* Middle row: Health Trend + Stock Tickers */}

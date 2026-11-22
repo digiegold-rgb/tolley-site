@@ -173,11 +173,11 @@ function CleanoutsPage() {
           <a href="/cleanouts/terms" className="hover:text-white/40">Terms</a>
           <a href="/cleanouts/privacy" className="hover:text-white/40">Privacy</a>
           <a href="/sms-terms" className="hover:text-white/40">SMS Terms</a>
-          <a href="/junkinjays" className="hover:text-white/40">Scrap &amp; Junk</a>
+          <a href="/repair" className="hover:text-white/40">Repairs &amp; Property Help</a>
           <a href="/trailer" className="hover:text-white/40">Trailers</a>
           <a href="/wd" className="hover:text-white/40">W/D Rental</a>
           <a href="/homes" className="hover:text-white/40">Real Estate</a>
-          <a href="/moving" className="hover:text-white/40">Moving</a>
+          <a href="/rental" className="hover:text-white/40">Rentals</a>
           <Link href="/shop" className="hover:text-white/40">Shop</Link>
         </div>
       </footer>

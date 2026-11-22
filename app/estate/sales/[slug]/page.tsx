@@ -30,7 +30,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const sale = await fetchSale(slug);
-  if (!sale) return { title: "Sale not found | Tolley Estate Sales" };
+  if (!sale || !["upcoming", "live", "done"].includes(sale.status)) return { title: "Sale not found | Tolley Estate Sales", robots: { index: false } };
   const description =
     sale.description ??
     `Estate sale in ${sale.areaLabel}. Address released the day before — join the list at tolley.io/estate for early access.`;
@@ -55,11 +55,12 @@ export default async function EstateSalePage({
 }) {
   const { slug } = await params;
   const sale = await fetchSale(slug);
-  if (!sale) notFound();
+  if (!sale || !["upcoming", "live", "done"].includes(sale.status)) notFound();
+  const ended = sale.status === "done" || sale.endsAt.getTime() <= Date.now();
 
   // Done sales never expose an address — family privacy outlives the reveal window.
   const published =
-    sale.status !== "done" &&
+    !ended &&
     sale.addressPublishAt !== null &&
     sale.addressPublishAt.getTime() <= Date.now();
   const cardData: SaleCardData = {
@@ -71,7 +72,7 @@ export default async function EstateSalePage({
     startsAtIso: sale.startsAt.toISOString(),
     addressPublishAtIso: sale.addressPublishAt?.toISOString() ?? null,
     highlights: sale.highlights,
-    status: sale.status,
+    status: ended ? "done" : sale.status,
   };
 
   const jsonLd = {
@@ -122,10 +123,10 @@ export default async function EstateSalePage({
         </nav>
 
         <div className="mt-6">
-          <SaleCard sale={cardData} />
+          <SaleCard sale={cardData} headingLevel={1} />
         </div>
 
-        {sale.status === "done" && (
+        {ended && (
           <p
             className="es-panel mt-6 p-4 text-center text-sm"
             style={{ color: "var(--es-cream-dim)" }}

@@ -15,7 +15,7 @@ export function LegalPageShell({
   children,
 }: LegalPageShellProps) {
   return (
-    <main className="legal-page relative min-h-screen px-5 pt-10 pb-24 sm:px-8 sm:pt-14">
+    <main className="legal-page relative min-h-screen overflow-x-clip px-5 pt-10 pb-24 sm:px-8 sm:pt-14">
       <div aria-hidden="true" className="hp-dot-grid pointer-events-none fixed inset-0 z-0" />
       <div aria-hidden="true" className="portal-spotlight portal-spotlight-left" />
       <div aria-hidden="true" className="portal-spotlight portal-spotlight-right" />

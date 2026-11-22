@@ -36,12 +36,12 @@ interface SaleDay {
 async function fetchSales() {
   const [upcoming, past] = await Promise.all([
     prisma.estateSale.findMany({
-      where: { status: { in: ["upcoming", "live"] } },
+      where: { status: { in: ["upcoming", "live"] }, endsAt: { gt: new Date() } },
       orderBy: { startsAt: "asc" },
       take: 3,
     }),
     prisma.estateSale.findMany({
-      where: { status: "done" },
+      where: { OR: [{ status: "done" }, { status: { in: ["upcoming", "live"] }, endsAt: { lte: new Date() } }] },
       orderBy: { startsAt: "desc" },
       take: 3,
     }),
@@ -54,7 +54,7 @@ type SaleRow = Awaited<ReturnType<typeof fetchSales>>["upcoming"][number];
 function toCardData(sale: SaleRow): SaleCardData {
   // Done sales never expose an address — family privacy outlives the reveal window.
   const published =
-    sale.status !== "done" &&
+    sale.status !== "done" && sale.endsAt.getTime() > Date.now() &&
     sale.addressPublishAt !== null &&
     sale.addressPublishAt.getTime() <= Date.now();
   return {
@@ -66,7 +66,7 @@ function toCardData(sale: SaleRow): SaleCardData {
     startsAtIso: sale.startsAt.toISOString(),
     addressPublishAtIso: sale.addressPublishAt?.toISOString() ?? null,
     highlights: sale.highlights,
-    status: sale.status,
+    status: sale.endsAt.getTime() <= Date.now() ? "done" : sale.status,
   };
 }
 
