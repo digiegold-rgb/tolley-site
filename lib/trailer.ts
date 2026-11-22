@@ -99,3 +99,35 @@ export const TR_TRAILERS = [
     facebookUrl: "",
   },
 ] as const;
+
+/** Public answers shared by the page and AI discovery documents. */
+export const TR_FAQ = [
+  {
+    q: "Do the trailers have license plates?",
+    a: "No. Our trailers do not have license plates. Confirm registration, plate, and towing requirements for your route before booking; ask us about the trailer documents.",
+  },
+  {
+    q: "What payment methods do you accept?",
+    a: "Everything \u2014 cash, card, Venmo, Zelle, CashApp. There\u2019s a cash box at the trailer location for after-hours or weekend pickups.",
+  },
+  {
+    q: "Do I need insurance?",
+    a: "Confirm trailer liability and damage coverage directly with your insurer before pickup. Coverage depends on your policy and vehicle; do not assume the rental is automatically covered.",
+  },
+  {
+    q: "What if something gets damaged?",
+    a: "You\u2019re responsible for any damage during the rental period. Return it how you got it. Normal wear is expected \u2014 abuse and neglect are not.",
+  },
+  {
+    q: "How do I book?",
+    a: `Call ${TR_CONTACT_PHONE}. We\u2019ll confirm availability, you show up with your driver\u2019s license, and you\u2019re on your way.`,
+  },
+  {
+    q: "What sizes are available?",
+    a: "We have a 16ft single axle (2,500 lbs), an 18ft dual axle (7,000 lbs), a 20ft utility (7,000 lbs), and a 20ft car hauler (10,000 lbs). Check our Facebook for current availability and photos.",
+  },
+  {
+    q: "Do I need to sign a waiver?",
+    a: "Yes. All renters agree to our rental terms before pickup. A digital waiver is coming soon.",
+  },
+];

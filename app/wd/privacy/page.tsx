@@ -4,6 +4,7 @@ import Link from "next/link";
 import { WD_BRAND, WD_COMPANY, WD_CONTACT_EMAIL, WD_CONTACT_PHONE } from "@/lib/wd";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/wd/privacy" },
   title: "Privacy Policy | Wash & Dry Rental",
   description:
     "Privacy Policy for Wash & Dry Rental (DBA YourKCHomes). How we collect, use, and protect your information.",

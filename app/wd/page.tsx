@@ -1,3 +1,4 @@
+import { WD_PRICE_WASHER, WD_PRICE_BUNDLE, WD_CONTACT_PHONE, WD_CONTACT_EMAIL, WD_FACEBOOK_URL } from "@/lib/wd";
 import { discoveryMetadata } from "@/lib/discovery";
 import { PublicOfferDetails } from "@/components/shared/public-offer-details";
 import { Suspense } from "react";
@@ -15,11 +16,11 @@ const jsonLd = {
   "@type": "LocalBusiness",
   name: "Wash & Dry Rental by Your KC Homes LLC",
   description:
-    "Affordable washer and dryer rentals in Kansas City with free delivery, installation, and maintenance included. No contracts. $58/mo.",
+    `Washer rental for $${WD_PRICE_WASHER}/month or a washer and dryer for $${WD_PRICE_BUNDLE}/month in Kansas City. Free delivery, installation, and maintenance included. No contracts.`,
   url: "https://www.tolley.io/wd",
-  telephone: "913-283-3826",
-  email: "Jared@yourkchomes.com",
-  priceRange: "$58/mo",
+  telephone: WD_CONTACT_PHONE,
+  email: WD_CONTACT_EMAIL,
+  priceRange: `$${WD_PRICE_WASHER}–$${WD_PRICE_BUNDLE}/mo`,
   currenciesAccepted: "USD",
   paymentAccepted: "Credit Card",
   areaServed: [
@@ -40,17 +41,18 @@ const jsonLd = {
     "@type": "OfferCatalog",
     name: "Washer & Dryer Rentals",
     itemListElement: [
-      {
-        "@type": "Offer",
-        itemOffered: { "@type": "Product", name: "Washer + Dryer Rental" },
-        price: "58.00",
-        priceCurrency: "USD",
-        priceSpecification: { "@type": "UnitPriceSpecification", price: "58.00", priceCurrency: "USD", unitCode: "MON" },
-        availability: "https://schema.org/InStock",
-      },
-    ],
+      { name: "Washer Rental", price: WD_PRICE_WASHER },
+      { name: "Washer + Dryer Rental", price: WD_PRICE_BUNDLE },
+    ].map(({ name, price }) => ({
+      "@type": "Offer",
+      itemOffered: { "@type": "Service", name },
+      price: price.toFixed(2),
+      priceCurrency: "USD",
+      priceSpecification: { "@type": "UnitPriceSpecification", price: price.toFixed(2), priceCurrency: "USD", unitCode: "MON" },
+      // Inventory and delivery dates require provider confirmation.
+    })),
   },
-  sameAs: ["https://www.facebook.com/share/1AafKhE5tq/?mibextid=wwXIfr"],
+  sameAs: [WD_FACEBOOK_URL],
 };
 
 function WdPage() {

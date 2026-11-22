@@ -94,6 +94,7 @@ export default function AnimateDemoPage(): React.ReactElement {
       <RouteContext.Provider value={routeValue}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 20px 0' }}>
           <div style={{ marginBottom: 14 }}>
+            <h1 className="mb-2 text-2xl font-semibold">Jelly Studio demo</h1>
             <MicroLabel tone="cyan" style={{ marginBottom: 6 }}>
               Demo — no signup
             </MicroLabel>

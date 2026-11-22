@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function ClassicGamePage() {
-  return <main><p className="sr-only">Portal Hoppers Classic is a free co-op pixel platformer. Arrow keys move, Space jumps, X bashes, and C uses powers. Player two uses WASD and Shift. Touch controls appear on phones and tablets.</p><GameShell /></main>;
+  return <main><h1 className="sr-only">Portal Hoppers Classic</h1><p className="sr-only">Portal Hoppers Classic is a free co-op pixel platformer. Arrow keys move, Space jumps, X bashes, and C uses powers. Player two uses WASD and Shift. Touch controls appear on phones and tablets.</p><GameShell /></main>;
 }

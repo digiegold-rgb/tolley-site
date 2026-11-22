@@ -8,7 +8,7 @@ export const revalidate = 600;
 export const metadata = {
   alternates: { canonical: "https://www.tolley.io/markets" },
   title: "Market Intelligence | T-Agent by Tolley.io",
-  description: "Real-time housing market intelligence — AI-analyzed YouTube transcripts, stock data, economic indicators, and news. Powered by T-Agent.",
+  description: "Published housing market analysis, economic indicators, news, and video summaries. Check the snapshot and source dates before using the data. Powered by T-Agent.",
 };
 
 async function MarketsPage() {
@@ -130,7 +130,10 @@ async function MarketsPage() {
           <h1 className="text-2xl font-bold text-white mb-1">Market Intelligence</h1>
           <p className="text-sm text-white/40">
             AI-analyzed housing market data from YouTube, economic indicators, RSS feeds, and stock data.
-            Updated every 4 hours.
+            Review the snapshot and source dates before using these figures.
+          </p>
+          <p className="mt-2 text-sm text-white/60">
+            {snapshot ? <>Latest published snapshot: <time dateTime={snapshot.updatedAt}>{new Date(snapshot.updatedAt).toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })} Central</time>. Individual indicators may describe earlier periods.</> : "No published snapshot is currently available."}
           </p>
         </div>
 

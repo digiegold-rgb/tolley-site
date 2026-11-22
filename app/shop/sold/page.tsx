@@ -119,9 +119,9 @@ export default async function SoldPage({
     return (
       <div className="flex min-h-[40vh] flex-col items-center justify-center text-center">
         <p className="text-4xl">📦</p>
-        <h2 className="mt-4 text-xl font-bold text-white">
+        <h1 className="mt-4 text-xl font-bold text-white">
           No sold items yet
-        </h2>
+        </h1>
         <p className="mt-2 text-sm text-white/50">
           Once items move, they&rsquo;ll show here so buyers can browse what
           they missed (with Amazon alternatives).
@@ -138,6 +138,7 @@ export default async function SoldPage({
 
   return (
     <div>
+      <h1 className="mb-4 text-2xl font-bold text-white">Sold items</h1>
       <SearchBox
         initial={filters.q}
         resultHint={

@@ -73,6 +73,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Curated extras not represented as standalone subsites
   const extras: MetadataRoute.Sitemap = [
+    { url: `${BASE}/animate/demo`, changeFrequency: "monthly", priority: 0.3 },
+    { url: `${BASE}/animate/beta`, changeFrequency: "monthly", priority: 0.3 },
+    { url: `${BASE}/animate/terms`, changeFrequency: "monthly", priority: 0.3 },
+    { url: `${BASE}/animate/privacy`, changeFrequency: "monthly", priority: 0.3 },
+    { url: `${BASE}/wd/terms`, changeFrequency: "monthly", priority: 0.3 },
+    { url: `${BASE}/wd/privacy`, changeFrequency: "monthly", priority: 0.3 },
+    { url: `${BASE}/trailer/terms`, changeFrequency: "monthly", priority: 0.3 },
+    { url: `${BASE}/trailer/privacy`, changeFrequency: "monthly", priority: 0.3 },
+    { url: `${BASE}/rental/terms`, changeFrequency: "monthly", priority: 0.3 },
+    { url: `${BASE}/estate/terms`, changeFrequency: "monthly", priority: 0.3 },
+    { url: `${BASE}/estate/privacy`, changeFrequency: "monthly", priority: 0.3 },
+    { url: `${BASE}/estate/agreement`, changeFrequency: "monthly", priority: 0.3 },
+    { url: `${BASE}/sales/terms`, changeFrequency: "monthly", priority: 0.3 },
+    { url: `${BASE}/shop/picks`, changeFrequency: "monthly", priority: 0.3 },
+    { url: `${BASE}/game/classic`, changeFrequency: "monthly", priority: 0.3 },
+
     { url: `${BASE}/live/reselling`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE}/live/sell`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE}/services`, changeFrequency: "monthly", priority: 0.9 },

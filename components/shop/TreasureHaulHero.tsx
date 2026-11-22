@@ -22,9 +22,9 @@ export default function TreasureHaulHero() {
           <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-amber-300/80">
             Brand hub
           </p>
-          <h2 className="mt-1 text-xl font-bold tracking-tight text-white sm:text-2xl">
+          <h1 className="mt-1 text-xl font-bold tracking-tight text-white sm:text-2xl">
             Ruthann&rsquo;s Treasure Haul
-          </h2>
+          </h1>
           <p className="mt-1 text-sm text-white/70">
             New finds daily · Kansas City pickup · ships nationwide. Follow on Facebook for the
             morning hunt.

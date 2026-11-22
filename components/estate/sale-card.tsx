@@ -43,19 +43,21 @@ function useCountdown(targetIso: string) {
   };
 }
 
-export default function SaleCard({ sale }: { sale: SaleCardData }) {
+export default function SaleCard({ sale, headingLevel = 2 }: { sale: SaleCardData; headingLevel?: 1 | 2 }) {
   const count = useCountdown(sale.startsAtIso);
-  const live = sale.status === "live" || (!count && sale.status === "upcoming");
+  const ended = sale.status === "done";
+  const live = !ended && (sale.status === "live" || (!count && sale.status === "upcoming"));
+  const Heading = headingLevel === 1 ? "h1" : "h2";
 
   return (
     <div className="es-sale-plate p-8 sm:p-10">
       <div className="relative z-10 text-center">
         <p className="es-kicker justify-center">
-          {live ? "Happening now" : "This weekend"}
+          {ended ? "Sale ended" : live ? "Happening now" : "Upcoming sale"}
         </p>
-        <h2 className="es-display mt-4 text-3xl font-semibold sm:text-4xl">
+        <Heading className="es-display mt-4 text-3xl font-semibold sm:text-4xl">
           {sale.title}
-        </h2>
+        </Heading>
 
         <div className="mt-5 space-y-1">
           {sale.days.map((d) => (
@@ -76,7 +78,7 @@ export default function SaleCard({ sale }: { sale: SaleCardData }) {
 
         <p className="mt-4 text-sm" style={{ color: "var(--es-cream-dim)" }}>
           📍{" "}
-          {sale.address ? (
+          {ended ? sale.areaLabel : sale.address ? (
             <span className="font-semibold" style={{ color: "var(--es-cream)" }}>
               {sale.address}
             </span>
@@ -88,8 +90,8 @@ export default function SaleCard({ sale }: { sale: SaleCardData }) {
           )}
         </p>
 
-        {count && (
-          <div className="mx-auto mt-6 flex max-w-sm items-stretch justify-center gap-3">
+        {count && !ended && (
+          <div className="mx-auto mt-6 grid max-w-sm grid-cols-2 gap-3 sm:grid-cols-4">
             {[
               { v: count.days, l: "days" },
               { v: count.hours, l: "hrs" },
@@ -131,7 +133,7 @@ export default function SaleCard({ sale }: { sale: SaleCardData }) {
             Sale details &amp; photos
           </Link>
           <a href="#alerts" className="es-btn-secondary px-7 py-3 text-sm">
-            Get the address first — join the list
+            {ended ? "Hear about the next sale" : "Get sale updates — join the list"}
           </a>
         </div>
       </div>

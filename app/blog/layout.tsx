@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     site: "@tolleyio",
   },
   alternates: {
-    canonical: "https://tolley.io/blog",
+    canonical: "https://www.tolley.io/blog",
   },
 };
 

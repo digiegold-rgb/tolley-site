@@ -6,6 +6,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/sales/terms" },
   title: "The Handshake — Launchpad Operator Terms | Tolley.io",
   description:
     "Plain-English terms for running a business on The Launchpad: the cut, the buyout, who owns what, and the kill-switch. No fine print.",
