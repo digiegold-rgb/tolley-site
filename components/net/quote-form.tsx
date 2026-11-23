@@ -15,6 +15,9 @@ export function NetQuoteForm() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [city, setCity] = useState("");
+  const [projectType, setProjectType] = useState("Home / gaming");
+  const [organization, setOrganization] = useState("");
+  const [timeline, setTimeline] = useState("");
   const [problem, setProblem] = useState("");
   const [gaming, setGaming] = useState<"" | "yes" | "no">("");
   const [devices, setDevices] = useState("");
@@ -31,6 +34,11 @@ export function NetQuoteForm() {
       setErrorMsg(`That email does not look complete. Fix it, or call or text ${TN_PHONE}.`);
       return;
     }
+    if (phone.replace(/\D/g, "").length < 7 && !trimmedEmail) {
+      setStatus("error");
+      setErrorMsg("Add a phone number with at least 7 digits or an email so Jared can reach you.");
+      return;
+    }
     setStatus("submitting");
     setErrorMsg("");
 
@@ -45,6 +53,9 @@ export function NetQuoteForm() {
           email: trimmedEmail,
           city,
           problem,
+          projectType,
+          organization,
+          timeline,
           gaming: gaming || undefined,
           devices,
           preferredTime,
@@ -76,9 +87,9 @@ export function NetQuoteForm() {
   if (status === "success") {
     return (
       <div className="tc-diff p-8 text-center" role="status">
-        <h3 className="tc-display text-2xl text-white">Got it. Jared will call or text you back.</h3>
+        <h3 className="tc-display text-2xl text-white">Thanks. Jared will follow up about your network.</h3>
         <p className="mt-3 text-sm text-white/60">
-          The consult request is saved. Want to talk sooner?{" "}
+          Your consult request is received. Want to talk sooner?{" "}
           <a href={TN_PHONE_SMS} className="font-semibold text-[#ff7a1a] underline underline-offset-2">
             Text {TN_PHONE}
           </a>
@@ -90,9 +101,10 @@ export function NetQuoteForm() {
 
   return (
     <form onSubmit={handleSubmit} className="tc-form space-y-4 p-6 sm:p-8">
+      <p className="text-sm text-white/70">Your name and either a phone number or email are enough to start. Other details are optional.</p>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="tn-name" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-white/50">
+          <label htmlFor="tn-name" className="mb-1.5 block text-sm font-semibold uppercase tracking-wider text-white/70">
             Name <span className="text-[#ff7a1a]">*</span>
           </label>
           <input
@@ -103,29 +115,28 @@ export function NetQuoteForm() {
             onChange={(e) => setName(e.target.value)}
             placeholder="Your name"
             autoComplete="name"
-            className="tc-input min-h-11 px-3.5 py-2.5 text-base sm:text-sm"
+            className="tc-input min-h-11 px-3.5 py-2.5 text-base"
           />
         </div>
         <div>
-          <label htmlFor="tn-phone" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-white/50">
-            Phone <span className="text-[#ff7a1a]">*</span>
+          <label htmlFor="tn-phone" className="mb-1.5 block text-sm font-semibold uppercase tracking-wider text-white/70">
+            Phone
           </label>
           <input
             id="tn-phone"
             type="tel"
-            required
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="Your mobile number"
             autoComplete="tel"
-            className="tc-input min-h-11 px-3.5 py-2.5 text-base sm:text-sm"
+            className="tc-input min-h-11 px-3.5 py-2.5 text-base"
           />
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="tn-email" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-white/50">
+          <label htmlFor="tn-email" className="mb-1.5 block text-sm font-semibold uppercase tracking-wider text-white/70">
             Email
           </label>
           <input
@@ -135,11 +146,11 @@ export function NetQuoteForm() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@email.com"
             autoComplete="email"
-            className="tc-input min-h-11 px-3.5 py-2.5 text-base sm:text-sm"
+            className="tc-input min-h-11 px-3.5 py-2.5 text-base"
           />
         </div>
         <div>
-          <label htmlFor="tn-city" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-white/50">
+          <label htmlFor="tn-city" className="mb-1.5 block text-sm font-semibold uppercase tracking-wider text-white/70">
             City
           </label>
           <input
@@ -149,27 +160,43 @@ export function NetQuoteForm() {
             onChange={(e) => setCity(e.target.value)}
             placeholder="Independence"
             autoComplete="address-level2"
-            className="tc-input min-h-11 px-3.5 py-2.5 text-base sm:text-sm"
+            className="tc-input min-h-11 px-3.5 py-2.5 text-base"
           />
         </div>
       </div>
 
+      <fieldset>
+        <legend className="mb-1.5 block text-sm font-semibold uppercase tracking-wider text-white/70">What kind of space?</legend>
+        <div className="flex flex-wrap gap-3">
+          {["Home / gaming", "Home office", "Small business"].map(choice => (
+            <label key={choice} className="flex min-h-11 items-center gap-2 rounded border border-white/15 px-4 text-sm text-white/80">
+              <input type="radio" name="projectType" value={choice} checked={projectType === choice} onChange={() => setProjectType(choice)} />{choice}
+            </label>
+          ))}
+        </div>
+      </fieldset>
       <div>
-        <label htmlFor="tn-problem" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-white/50">
-          What&apos;s wrong
+        <label htmlFor="tn-organization" className="mb-1.5 block text-sm font-semibold uppercase tracking-wider text-white/70">Business / organization (optional)</label>
+        <input id="tn-organization" type="text" autoComplete="organization" maxLength={160} value={organization} onChange={e => setOrganization(e.target.value)} placeholder="Business name, if applicable" className="tc-input min-h-11 px-3.5 py-2.5 text-base" />
+      </div>
+
+      <div>
+        <label htmlFor="tn-problem" className="mb-1.5 block text-sm font-semibold uppercase tracking-wider text-white/70">
+          What would you like help with?
         </label>
         <textarea
           id="tn-problem"
           rows={4}
           value={problem}
           onChange={(e) => setProblem(e.target.value)}
-          placeholder="Wi-Fi drops in the back bedrooms, high ping in games, dead spots..."
-          className="tc-input resize-y px-3.5 py-2.5 text-base sm:text-sm"
+          placeholder="Opening an office, Wi-Fi dead spots, gaming lag, shared files, backups, remote access..."
+          maxLength={2000}
+          className="tc-input resize-y px-3.5 py-2.5 text-base"
         />
       </div>
 
       <fieldset>
-        <legend className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-white/50">
+        <legend className="mb-1.5 block text-sm font-semibold uppercase tracking-wider text-white/70">
           Do you game on this network?
         </legend>
         <div className="flex flex-wrap gap-3">
@@ -189,7 +216,7 @@ export function NetQuoteForm() {
       </fieldset>
 
       <div>
-        <label htmlFor="tn-devices" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-white/50">
+        <label htmlFor="tn-devices" className="mb-1.5 block text-sm font-semibold uppercase tracking-wider text-white/70">
           Devices
         </label>
         <input
@@ -197,14 +224,15 @@ export function NetQuoteForm() {
           type="text"
           value={devices}
           onChange={(e) => setDevices(e.target.value)}
-          placeholder="Two PCs, a console, three Fire TVs"
-          className="tc-input min-h-11 px-3.5 py-2.5 text-base sm:text-sm"
+          placeholder="Router or provider, number of computers, printers, cameras, NAS..."
+          maxLength={500}
+          className="tc-input min-h-11 px-3.5 py-2.5 text-base"
         />
       </div>
 
       <div>
-        <label htmlFor="tn-time" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-white/50">
-          Preferred time
+        <label htmlFor="tn-time" className="mb-1.5 block text-sm font-semibold uppercase tracking-wider text-white/70">
+          Best time to contact you
         </label>
         <input
           id="tn-time"
@@ -212,8 +240,13 @@ export function NetQuoteForm() {
           value={preferredTime}
           onChange={(e) => setPreferredTime(e.target.value)}
           placeholder="Weekday evenings, Saturday morning"
-          className="tc-input min-h-11 px-3.5 py-2.5 text-base sm:text-sm"
+          className="tc-input min-h-11 px-3.5 py-2.5 text-base"
         />
+      </div>
+
+      <div>
+        <label htmlFor="tn-timeline" className="mb-1.5 block text-sm font-semibold uppercase tracking-wider text-white/70">Project timing</label>
+        <input id="tn-timeline" type="text" value={timeline} onChange={e => setTimeline(e.target.value)} maxLength={200} placeholder="Planning ahead, moving next month, an existing problem" className="tc-input min-h-11 px-3.5 py-2.5 text-base" />
       </div>
 
       <HeardAbout value={reported} onChange={setReported} />
@@ -232,7 +265,9 @@ export function NetQuoteForm() {
         {status === "submitting" ? "Sending…" : "Request my free consult"}
       </button>
 
-      <p className="text-center text-xs text-white/40">
+      <p className="text-center text-sm text-white/70">By submitting, you ask Jared to contact you about this project. No payment or booking commitment. Please leave out passwords and access codes. <a href="/privacy" className="underline underline-offset-2">Privacy policy</a>.</p>
+      <noscript><p className="text-sm text-white/70">To request a consult without JavaScript, call or text {TN_PHONE}.</p></noscript>
+      <p className="text-center text-sm text-white/70">
         Or call or text Jared at{" "}
         <a href={TN_PHONE_SMS} className="font-semibold text-[#ff7a1a] underline underline-offset-2">
           {TN_PHONE}

@@ -18,6 +18,10 @@ export const manifest: SubsiteManifest = {
   status: "public",
   serviceArea: TN_AREA,
   keywords: [
+    "network infrastructure consulting",
+    "small business network",
+    "NAS and backup planning",
+    "remote access planning",
     "home network setup",
     "gaming network",
     "UniFi install",
@@ -30,7 +34,7 @@ export const manifest: SubsiteManifest = {
   discovery: {
     disposition: "offering",
     canonicalUrl: TN_URL,
-    reviewedAt: "2026-11-20",
+    reviewedAt: "2026-11-22",
     verification: "repository",
     operator: "Jared Tolley",
     phone: TN_PHONE,
@@ -42,15 +46,18 @@ export const manifest: SubsiteManifest = {
     {
       verb: "request_network_consult",
       description:
-        "Request a free phone consult for home or gaming network setup in the Kansas City area. A saved inquiry is not a price, a booking, or confirmed availability.",
+        "Request a free phone consult for home, gaming, or small-business network consulting and setup in the Kansas City area. A reachable phone number or email is required. A saved inquiry is not a price, a booking, or confirmed availability.",
       fields: {
         name: { type: "string", required: false },
         phone: { type: "phone", required: false },
         email: { type: "email", required: false },
         city: { type: "string", required: false, description: "City in or around Kansas City" },
-        problem: { type: "string", required: false, description: "What is wrong with the network" },
+        problem: { type: "string", required: false, description: "Network problems, plans, and desired outcomes" },
         gaming: { type: "enum", enum: ["yes", "no"], required: false },
-        devices: { type: "string", required: false, description: "Consoles, PCs, Fire TVs, and other devices" },
+        devices: { type: "string", required: false, description: "Computers, routers, switches, printers, NAS, and other devices" },
+        projectType: { type: "string", required: false, description: "Home / gaming, home office, or small business" },
+        organization: { type: "string", required: false },
+        timeline: { type: "string", required: false, description: "Desired project timing" },
         preferredTime: { type: "string", required: false },
       },
     },

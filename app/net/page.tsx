@@ -44,7 +44,7 @@ export default function NetPage() {
           <div className="mx-auto max-w-3xl">
             <p className="tc-kicker">Tolley Net · {TN_AREA}</p>
             <h1 className="tc-display mt-4 text-3xl font-bold leading-tight text-white sm:text-5xl">
-              Kansas City home and gaming network setup: lower ping, Wi-Fi that reaches every room, installed by Jared.
+              A network that works for your home. And your business.
             </h1>
             <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-white/70 sm:text-lg">
               {TN_PURPOSE}
@@ -67,17 +67,38 @@ export default function NetPage() {
 
         <div className="mx-auto max-w-6xl space-y-16 px-5 pb-20 sm:px-8">
           <section aria-labelledby="tn-offers">
-            <p className="tc-kicker text-center">What Jared installs</p>
+            <p className="tc-kicker text-center">Network consulting & setup</p>
             <h2 id="tn-offers" className="tc-display mt-2 mb-8 text-center text-3xl text-white">
-              Offers
+              Plan it. Connect it. Make it work.
             </h2>
             <div className="grid gap-4 sm:grid-cols-2">
               {TN_OFFERS.map((offer) => (
                 <article key={offer.title} className="tc-card p-6">
                   <h3 className="tc-display text-lg text-[#ff7a1a]">{offer.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-white/60">{offer.desc}</p>
+                  <p className="mt-2 text-base leading-relaxed text-white/70">{offer.desc}</p>
                 </article>
               ))}
+            </div>
+          </section>
+
+          <section aria-labelledby="tn-assessment" className="tc-card p-6 sm:p-10">
+            <p className="tc-kicker">Start with a plan</p>
+            <h2 id="tn-assessment" className="tc-display mt-2 text-3xl text-white">Know what to fix, what to keep, and what comes next.</h2>
+            <p className="mt-4 text-base leading-relaxed text-white/70">Moving into an office? Losing video calls in the back room? Sharing files between computers? Bring the problem or the idea. We can scope a useful assessment before you buy equipment.</p>
+            <div className="mt-6 grid gap-6 sm:grid-cols-3">
+              <div><h3 className="text-lg font-semibold text-white">Review the setup</h3><p className="mt-2 text-base text-white/70">Your space, internet service, devices, coverage, and the work the network needs to support.</p></div>
+              <div><h3 className="text-lg font-semibold text-white">Get a practical plan</h3><p className="mt-2 text-base text-white/70">An agreed assessment can include a network layout, priorities, equipment recommendations, and installation options.</p></div>
+              <div><h3 className="text-lg font-semibold text-white">Agree the work</h3><p className="mt-2 text-base text-white/70">Confirm hardware, labor, scheduling, testing, and handoff before installation. Plan any downtime around your work.</p></div>
+            </div>
+            <a href="#consult" className="tc-btn-secondary mt-6 inline-flex min-h-11 items-center rounded px-6 py-3 font-semibold">Discuss my network</a>
+          </section>
+
+          <section aria-labelledby="tn-jared" className="grid items-center gap-8 sm:grid-cols-[1fr_2fr]">
+            <div><p className="tc-kicker">Work directly with Jared</p><h2 id="tn-jared" className="tc-display mt-2 text-3xl text-white">Practical help from planning to handoff.</h2></div>
+            <div className="space-y-4 text-base leading-relaxed text-white/70">
+              <p>Jared spent five years as an Apple Genius, repairing computers and helping people use their technology. He also built the computers for his own mining company.</p>
+              <p>Tell him how you use your space and what is getting in the way. Together, you can agree the network work, budget, and next steps.</p>
+              <Link href="/pc" className="inline-flex min-h-11 items-center font-semibold text-[#ff7a1a] underline underline-offset-4">Need a workstation too? Explore Tolley PC</Link>
             </div>
           </section>
 
@@ -91,6 +112,7 @@ export default function NetPage() {
                 <li key={line}>{line}</li>
               ))}
             </ul>
+            <p className="mx-auto mt-4 max-w-2xl text-base text-white/70">The phone conversation is free. On-site assessments, equipment, installation, and follow-up support are scoped and priced before you commit.</p>
             {PRICING_PLACEHOLDER}
           </section>
 
@@ -101,7 +123,7 @@ export default function NetPage() {
                 Tell Jared about the network
               </h2>
               <p className="mb-8 text-center text-sm text-white/50">
-                He&apos;ll call or text you back. The request is confirmed only after it is saved.
+                Share what you need and a phone number or email. Jared will follow up to discuss the scope, coverage, and timing.
               </p>
               <NetQuoteForm />
             </div>
@@ -113,11 +135,11 @@ export default function NetPage() {
             <div className="mx-auto max-w-2xl space-y-3">
               {TN_FAQ.map((faq) => (
                 <details key={faq.q} className="tc-form group overflow-hidden">
-                  <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-4 px-5 py-4 text-sm font-semibold text-white/80 transition-colors hover:text-white">
+                  <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-4 px-5 py-4 text-base font-semibold text-white/80 transition-colors hover:text-white">
                     {faq.q}
                     <span className="text-xl text-[#ff7a1a] transition-transform group-open:rotate-45">+</span>
                   </summary>
-                  <div className="px-5 pb-4 text-sm leading-relaxed text-white/55">{faq.a}</div>
+                  <div className="px-5 pb-4 text-base leading-relaxed text-white/70">{faq.a}</div>
                 </details>
               ))}
             </div>

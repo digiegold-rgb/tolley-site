@@ -45,13 +45,22 @@ test("quote validation keeps a reachable lead and rejects an empty one", () => {
   assert.equal(saved.value.email, "ada@example.com");
   assert.equal(saved.value.city, "Independence");
   assert.equal(saved.value.gaming, true);
-  assert.match(saved.value.notes, /What's wrong: Ping spikes/);
+  assert.match(saved.value.notes, /Project needs: Ping spikes/);
   assert.match(saved.value.notes, /Gaming: yes/);
   assert.match(saved.value.notes, /Devices: Two PCs and a console/);
   assert.match(saved.value.notes, /Preferred time: Saturday morning/);
 
   const nameOnly = parseNetQuote({ name: "No Phone" });
-  assert.equal(nameOnly.ok, true);
+  assert.equal(nameOnly.ok, false);
+  assert.equal(parseNetQuote({ name: "Unreachable", phone: "123", email: "invalid" }).ok, false);
+  const emailOnly = parseNetQuote({ email: "owner@example.com", phone: "abc", projectType: "Small business", organization: "Example Office", timeline: "Next month" });
+  assert.equal(emailOnly.ok, true);
+  if (emailOnly.ok) {
+    assert.equal(emailOnly.value.phone, "");
+    assert.match(emailOnly.value.notes, /Project type: Small business/);
+    assert.match(emailOnly.value.notes, /Business \/ organization: Example Office/);
+    assert.match(emailOnly.value.notes, /Project timing: Next month/);
+  }
 
   const typed = parseNetQuote({ phone: "8165550199", email: "bad email", gaming: "NO" });
   assert.equal(typed.ok, true);
