@@ -16,13 +16,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const post = blogPosts.find(p => p.slug === slug);
   if (!post) return {};
 
-  const url = `https://tolley.io/blog/${post.slug}`;
+  const url = `https://www.tolley.io/blog/${post.slug}`;
 
   return {
     title: post.title,
     description: post.description,
     keywords: post.tags.join(", "),
-    authors: [{ name: "Jared Tolley", url: "https://tolley.io" }],
+    authors: [{ name: "Jared Tolley", url: "https://www.tolley.io" }],
     alternates: { canonical: url },
     openGraph: {
       title: post.title,
@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url,
       publishedTime: post.publishedAt,
       modifiedTime: post.updatedAt ?? post.publishedAt,
-      authors: ["https://tolley.io"],
+      authors: ["https://www.tolley.io"],
       tags: post.tags,
       siteName: "Tolley Build Journal",
     },
@@ -76,19 +76,19 @@ export default async function BlogPostPage({ params }: Props) {
     author: {
       "@type": "Person",
       name: "Jared Tolley",
-      url: "https://tolley.io",
+      url: "https://www.tolley.io",
       jobTitle: "Real Estate Agent & AI Developer",
     },
     publisher: {
       "@type": "Organization",
       name: "Tolley.io",
-      url: "https://tolley.io",
+      url: "https://www.tolley.io",
     },
     keywords: post.tags.join(", "),
-    url: `https://tolley.io/blog/${post.slug}`,
+    url: `https://www.tolley.io/blog/${post.slug}`,
     mainEntityOfPage: {
       "@type": "WebPage",
-      "@id": `https://tolley.io/blog/${post.slug}`,
+      "@id": `https://www.tolley.io/blog/${post.slug}`,
     },
   };
 

@@ -3,7 +3,8 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import type { HeatBatch, HeatDay, HeatRows, HeatSnapshot, Hvac } from "./types";
 import { sampleHeatRows } from "./sample";
-import { SNAPSHOT_RETENTION_MS } from "./time";
+import { ensureLoftFanColumns } from "./ensure-columns";
+import { FAN_HISTORY_DAYS, SNAPSHOT_RETENTION_MS } from "./time";
 import { buildHeatView, emptyHeatView } from "./view";
 import type { HeatView } from "./types";
 
@@ -22,6 +23,14 @@ type SnapshotRow = {
   downMode: string | null;
   downHvac: string;
   downFanMode: string | null;
+  loftFanOn: boolean | null;
+  loftFanW: number | null;
+  loftFanEnergyWh: number | null;
+  loftFanDecision: string | null;
+  humidOn?: boolean | null;
+  humidTargetRh?: number | null;
+  humidTodayH?: number | null;
+  humidDecision?: string | null;
 };
 
 function hvacOf(value: string): Hvac {
@@ -48,6 +57,18 @@ function fromSnapshot(row: SnapshotRow): HeatSnapshot {
       hvac: hvacOf(row.downHvac),
       fanMode: row.downFanMode,
     },
+    loftFan: {
+      on: row.loftFanOn,
+      watts: row.loftFanW,
+      energyWh: row.loftFanEnergyWh,
+      decision: row.loftFanDecision,
+    },
+    humid: {
+      on: row.humidOn ?? null,
+      targetRh: row.humidTargetRh ?? null,
+      todayH: row.humidTodayH ?? null,
+      decision: row.humidDecision ?? null,
+    },
   };
 }
 
@@ -67,6 +88,14 @@ function snapshotData(row: HeatSnapshot) {
     downMode: row.downstairs.mode,
     downHvac: row.downstairs.hvac,
     downFanMode: row.downstairs.fanMode,
+    loftFanOn: row.loftFan.on,
+    loftFanW: row.loftFan.watts,
+    loftFanEnergyWh: row.loftFan.energyWh,
+    loftFanDecision: row.loftFan.decision,
+    humidOn: row.humid?.on ?? null,
+    humidTargetRh: row.humid?.targetRh ?? null,
+    humidTodayH: row.humid?.todayH ?? null,
+    humidDecision: row.humid?.decision ?? null,
   };
 }
 
@@ -86,11 +115,17 @@ function dayData(row: HeatDay) {
     estCostLow: row.estCostLow,
     estCostHigh: row.estCostHigh,
     ccfPerHdd: row.ccfPerHdd,
+    humidOnH: row.humidOnH ?? null,
+    humidCycles: row.humidCycles ?? null,
+    humidKwh: row.humidKwh ?? null,
+    humidCost: row.humidCost ?? null,
+    humidWaterGal: row.humidWaterGal ?? null,
   };
 }
 
 export async function readHeatRows(now: Date): Promise<HeatRows> {
-  const since = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  await ensureLoftFanColumns();
+  const since = new Date(now.getTime() - FAN_HISTORY_DAYS * 24 * 60 * 60 * 1000);
   const [latest, snapshots, days, review] = await Promise.all([
     prisma.heatSnapshot.findFirst({ orderBy: { recordedAt: "desc" } }),
     prisma.heatSnapshot.findMany({ where: { recordedAt: { gte: since } }, orderBy: { recordedAt: "asc" } }),
@@ -115,6 +150,11 @@ export async function readHeatRows(now: Date): Promise<HeatRows> {
       estCostLow: row.estCostLow,
       estCostHigh: row.estCostHigh,
       ccfPerHdd: row.ccfPerHdd,
+      humidOnH: row.humidOnH,
+      humidCycles: row.humidCycles,
+      humidKwh: row.humidKwh,
+      humidCost: row.humidCost,
+      humidWaterGal: row.humidWaterGal,
     })),
     review: review ? { date: review.date, text: review.text } : null,
   };
@@ -150,6 +190,7 @@ export async function saveHeatIngest(batch: HeatBatch, now = new Date()): Promis
   reviews: number;
   pruned: number;
 }> {
+  await ensureLoftFanColumns();
   const cutoff = new Date(now.getTime() - SNAPSHOT_RETENTION_MS);
   const pruned = await prisma.$transaction(
     async (tx) => {

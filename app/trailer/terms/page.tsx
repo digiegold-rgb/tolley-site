@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { TR_BRAND, TR_COMPANY, TR_CONTACT_EMAIL, TR_CONTACT_PHONE } from "@/lib/trailer";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/trailer/terms" },
   title: "Rental Terms | Trailer Rental",
   description:
     "Utility Trailer Rental Terms & Conditions for Your KC Homes LLC. Damage policy, liability, insurance, and renter responsibilities.",

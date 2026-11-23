@@ -4,6 +4,7 @@ import Link from "next/link";
 import { WD_BRAND, WD_COMPANY, WD_CONTACT_EMAIL, WD_CONTACT_PHONE } from "@/lib/wd";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/wd/terms" },
   title: "Rental Agreement | Wash & Dry Rental",
   description:
     "Washer & Dryer Rental Agreement for Wash & Dry Rental (DBA YourKCHomes). Terms of service, coverage, payment, and privacy.",

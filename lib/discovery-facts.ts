@@ -1,9 +1,9 @@
 import { UNPROMOTED_SUBSITES } from "./public-route-policy";
 import type { SubsiteManifest } from "./agent-manifest";
 import { WD_PRICE_WASHER, WD_PRICE_BUNDLE } from "./wd";
-import { GEN_MODEL, GEN_PRICE_DAY, GEN_PRICE_WEEK, GEN_PRICE_MONTH } from "./generator";
+import { GEN_MODEL, GEN_PRICE_DAY, GEN_PRICE_WEEK, GEN_PRICE_MONTH, GEN_FAQ } from "./generator";
 import { MV_PRICE_DAY, MV_PRICE_WEEK, MV_PRICE_2WEEK } from "./moving";
-import { TR_TRAILERS } from "./trailer";
+import { TR_TRAILERS, TR_FAQ } from "./trailer";
 import { TBL_PRICE_TABLE, TBL_PRICE_CHAIR } from "./tables";
 import { KP_PRICE_DAY } from "./kerplunk";
 import { PT_PRICE_DAY } from "./picnic-table";
@@ -33,8 +33,8 @@ const corrections: Record<string, Partial<SubsiteManifest>> = {
   homes: { title: "Sell Your Kansas City Home | Jared Tolley — Your KC Homes", purpose: HM_SELLER_DESCRIPTION, faq: HOMES_FAQ },
   animate: { skipJsonLd: false, purpose: "Jelly Studio turns a script into a narrated video with generated scenes and captions. Pay per render, no subscription: a typical long-form video costs $1–7 all in. Public beta with prepaid credits; review the estimate before rendering.", pricing: [], faq: HELP_FAQ.slice(0, 6).map(f => ({ q: f.q, a: f.a })) },
   wd: { title: "Washer & Dryer Rental in Kansas City — $42/mo, Free Delivery", purpose: `Washer and dryer rental in the Kansas City metro: $${WD_PRICE_WASHER}/month for a washer or $${WD_PRICE_BUNDLE}/month for a washer and dryer. Free delivery, install, and repairs; no credit check, no contract. Call/text 913-283-3826.`, faq: WD_FAQ, pricing: [price(WD_PRICE_WASHER, "monthly", "Washer"), price(WD_PRICE_BUNDLE, "monthly", "Washer and dryer")] },
-  generator: { purpose: `${GEN_MODEL} tri-fuel generator rental in Kansas City. 7,500W running power; gasoline, propane, or natural gas. From $${GEN_PRICE_DAY}/day.`, pricing: [price(GEN_PRICE_DAY, "per day"), price(GEN_PRICE_WEEK, "per week"), price(GEN_PRICE_MONTH, "monthly")] },
-  trailer: { title: "Utility Trailer & Car Hauler Rental KC", purpose: "Rent 16ft, 18ft, and 20ft utility trailers or a 20ft car hauler in the Kansas City metro. Confirm towing requirements, dates, deposit, and delivery before booking.", pricing: TR_TRAILERS.map(t => price(t.pricing.day, "per day", t.name)) },
+  generator: { faq: GEN_FAQ, purpose: `${GEN_MODEL} tri-fuel generator rental in Kansas City. 7,500W running power; gasoline, propane, or natural gas. From $${GEN_PRICE_DAY}/day.`, pricing: [price(GEN_PRICE_DAY, "per day"), price(GEN_PRICE_WEEK, "per week"), price(GEN_PRICE_MONTH, "monthly")] },
+  trailer: { faq: TR_FAQ, title: "Utility Trailer & Car Hauler Rental KC", purpose: "Rent 16ft, 18ft, and 20ft utility trailers or a 20ft car hauler in the Kansas City metro. Confirm towing requirements, dates, deposit, and delivery before booking.", pricing: TR_TRAILERS.map(t => price(t.pricing.day, "per day", t.name)) },
   moving: { purpose: "Reusable moving supply rental in Kansas City: a bundle of 20 totes, 17 giant rubber bands, and 25 moving blankets.", pricing: [price(MV_PRICE_DAY, "per day"), price(MV_PRICE_WEEK, "per week"), price(MV_PRICE_2WEEK, "two weeks")] },
   tables: { pricing: [price(TBL_PRICE_TABLE, "per day", "Per table"), price(TBL_PRICE_CHAIR, "per day", "Set of four chairs, not per chair")] },
   "picnic-table": { purpose: `Picnic table rental for Kansas City events, from $${PT_PRICE_DAY}/day per table. Refundable deposit and delivery are separate.`, pricing: [price(PT_PRICE_DAY, "per day per table")] },

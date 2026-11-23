@@ -2,8 +2,33 @@
 export const ZONE = "America/Chicago";
 export const SNAPSHOT_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 export const CCF_BASELINE = 0.11;
-/** A missed push must not be counted as hours of heat. */
+/** A missed push must not be counted as hours of heat or loft-fan runtime. */
 export const HEAT_GAP_MS = 20 * 60 * 1000;
+/** How many Chicago days of loft-fan runtime the dashboard keeps on the chart. */
+export const FAN_HISTORY_DAYS = 14;
+/** Airius loft fan nameplate, used only when a snapshot says on and omits watts. */
+export const LOFT_FAN_NAMEPLATE_W = 36;
+/**
+ * Marginal residential energy charge for the loft fan.
+ * The heat page prices gas from Spark's daily estimates and has no electric tariff.
+ * This is Evergy Missouri Metro Schedule R (Standard Tier), winter, first 600 kWh:
+ * $0.12495/kWh. Winter is October–May. It is the energy charge only — the $12 monthly
+ * customer charge does not change because a 36 W fan is running, and riders such as
+ * the fuel adjustment are left out. Summer first-block energy on the same schedule
+ * is $0.14053/kWh. Change this constant to reprice history.
+ * https://www.evergy.com/-/media/documents/billing/missouri/detailed_tariffs_mo/mo-metro-rate.pdf
+ */
+export const ELECTRIC_USD_PER_KWH = 0.12495;
+/**
+ * Whole-home humidifiers: two Honeywell HE360A1075 fan-powered units on one Shelly relay,
+ * so they always run together. Nameplate is 120 VAC 0.7 A (84 VA) each, plus about 6 W
+ * for the 24 V transformer and water solenoid, so 90 W each is a ceiling, not a meter.
+ * Each flushes about 3.5 gal/h through the pad while running (most goes to the drain).
+ * https://pdf.lowes.com/productdocuments/11fc8004-ce3d-4bd2-b83c-e18e08059e17/61031099.pdf
+ */
+export const HUMIDIFIER_UNITS = 2;
+export const HUMIDIFIER_W_EACH = 90;
+export const HUMIDIFIER_GPH_EACH = 3.5;
 
 export function chicagoDate(now: Date): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -64,6 +89,11 @@ export function weekStartMonday(iso: string): string {
 
 export function monthStart(iso: string): string {
   return `${iso.slice(0, 8)}01`;
+}
+
+/** UTC ms of midnight at the start of a Chicago calendar date (`YYYY-MM-DD`). */
+export function chicagoDayStartMs(isoDate: string): number {
+  return startOfChicagoDay(new Date(`${isoDate}T18:00:00.000Z`)).getTime();
 }
 
 export function isIsoDate(iso: string): boolean {

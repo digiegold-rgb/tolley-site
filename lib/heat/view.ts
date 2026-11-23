@@ -1,4 +1,6 @@
-import type { HeatDay, HeatRows, HeatSnapshot, HeatTotals, HeatView } from "./types";
+import { buildLoftFan, emptyLoftFan } from "./fan";
+import { buildHumid, emptyHumid, humidTotals } from "./humid";
+import type { FanDayPoint, HeatDay, HeatRows, HeatSnapshot, HeatTotals, HeatView, HumidView } from "./types";
 import {
   CCF_BASELINE,
   HEAT_GAP_MS,
@@ -123,7 +125,60 @@ function sumPeriod(
     costLow: seenLow ? cents(costLow) : null,
     costHigh: seenHigh ? cents(costHigh) : null,
     hdd65: seenHdd ? round2(hdd) : null,
+    fanRuntimeH: 0,
+    fanKwh: null,
+    fanCost: null,
+    humidRuntimeH: 0,
+    humidKwh: null,
+    humidCost: null,
   };
+}
+
+/** Add humidifier runtime and dollars to a totals window (after the loft fan). */
+function withHumid(totals: HeatTotals, days: HeatDay[], humid: HumidView, today: string): HeatTotals {
+  const h = humidTotals(totals, days, humid, today);
+  const added = plusFan(totals.costLow, totals.costHigh, h.cost != null && h.cost > 0 ? h.cost : 0);
+  return {
+    ...totals,
+    costLow: added.low,
+    costHigh: added.high,
+    humidRuntimeH: h.runtimeH,
+    humidKwh: h.kwh,
+    humidCost: h.cost,
+  };
+}
+
+/** Add loft-fan dollars to whichever gas side exists. A missing side stays missing. */
+function plusFan(low: number | null, high: number | null, add: number): { low: number | null; high: number | null } {
+  if (add <= 0) return { low, high };
+  if (low == null && high == null) return { low: cents(add), high: cents(add) };
+  return {
+    low: low == null ? null : cents(low + add),
+    high: high == null ? null : cents(high + add),
+  };
+}
+
+function withLoftFan(totals: HeatTotals, fanDays: FanDayPoint[]): HeatTotals {
+  const inRange = fanDays.filter((d) => d.date >= totals.from && d.date <= totals.to);
+  const runtime = round2(inRange.reduce((sum, d) => sum + d.runtimeH, 0));
+  const knownKwh = inRange.filter((d) => d.kwh != null);
+  const kwh = knownKwh.length ? Math.round(knownKwh.reduce((sum, d) => sum + (d.kwh ?? 0), 0) * 1000) / 1000 : null;
+  const knownCost = inRange.filter((d) => d.cost != null);
+  const fanCost = knownCost.length ? cents(knownCost.reduce((sum, d) => sum + (d.cost ?? 0), 0)) : null;
+  const added = plusFan(totals.costLow, totals.costHigh, fanCost != null && fanCost > 0 ? fanCost : 0);
+  return {
+    ...totals,
+    costLow: added.low,
+    costHigh: added.high,
+    fanRuntimeH: runtime,
+    fanKwh: kwh,
+    fanCost,
+  };
+}
+
+function withEnergy(today: HeatView["today"], fanCost: number | null): HeatView["today"] {
+  const added = plusFan(today.costLow, today.costHigh, fanCost != null && fanCost > 0 ? fanCost : 0);
+  return { ...today, energyCostLow: added.low, energyCostHigh: added.high };
 }
 
 export function emptyHeatView(now = new Date()): HeatView {
@@ -137,10 +192,14 @@ export function emptyHeatView(now = new Date()): HeatView {
       date: today,
       costLow: null,
       costHigh: null,
+      energyCostLow: null,
+      energyCostHigh: null,
       source: "none",
       upstairsHeatH: 0,
       downstairsHeatH: 0,
     },
+    fan: emptyLoftFan(now),
+    humid: emptyHumid(now),
     series24h: [],
     days: [],
     week: {
@@ -152,6 +211,12 @@ export function emptyHeatView(now = new Date()): HeatView {
       costLow: null,
       costHigh: null,
       hdd65: null,
+      fanRuntimeH: 0,
+      fanKwh: null,
+      fanCost: null,
+      humidRuntimeH: 0,
+      humidKwh: null,
+      humidCost: null,
     },
     month: {
       label: "This month",
@@ -162,6 +227,12 @@ export function emptyHeatView(now = new Date()): HeatView {
       costLow: null,
       costHigh: null,
       hdd65: null,
+      fanRuntimeH: 0,
+      fanKwh: null,
+      fanCost: null,
+      humidRuntimeH: 0,
+      humidKwh: null,
+      humidCost: null,
     },
     ccf: { baseline: CCF_BASELINE, recentAvg: null, days: 0, versusBaseline: null },
     review: null,
@@ -196,12 +267,16 @@ export function buildHeatView(rows: HeatRows, now = new Date()): HeatView {
   const reportedCost = Boolean(reported && (reported.estCostLow != null || reported.estCostHigh != null));
   const useReported = Boolean(reported && (reportedCost || reportedHours > 0) && !(reportedHours === 0 && snapTotal >= 0.05));
 
+  const fan = buildLoftFan(snapshots, now);
+  const humid = buildHumid(snapshots, days, now);
   let todayBlock: HeatView["today"];
   if (useReported && reported) {
     todayBlock = {
       date: today,
       costLow: cents(reported.estCostLow),
       costHigh: cents(reported.estCostHigh),
+      energyCostLow: null,
+      energyCostHigh: null,
       source: "reported",
       upstairsHeatH: round2(reported.upstairsHeatH),
       downstairsHeatH: round2(reported.downstairsHeatH),
@@ -214,6 +289,8 @@ export function buildHeatView(rows: HeatRows, now = new Date()): HeatView {
       date: today,
       costLow: low ?? high,
       costHigh: high ?? low,
+      energyCostLow: null,
+      energyCostHigh: null,
       source: low == null && high == null ? "none" : "estimated",
       upstairsHeatH: snapHours.upstairs,
       downstairsHeatH: snapHours.downstairs,
@@ -223,11 +300,15 @@ export function buildHeatView(rows: HeatRows, now = new Date()): HeatView {
       date: today,
       costLow: null,
       costHigh: null,
+      energyCostLow: null,
+      energyCostHigh: null,
       source: "none",
       upstairsHeatH: 0,
       downstairsHeatH: 0,
     };
   }
+  const electricToday = (fan.today.cost ?? 0) + (humid.today.cost ?? 0);
+  todayBlock = withEnergy(todayBlock, electricToday > 0 ? electricToday : null);
 
   const daysForTotals = useReported ? days : days.filter((d) => d.date !== today);
   const extra =
@@ -276,8 +357,20 @@ export function buildHeatView(rows: HeatRows, now = new Date()): HeatView {
       ccfPerHdd: d.ccfPerHdd,
       outdoorAvg: d.outdoorAvg,
     })),
-    week: sumPeriod(daysForTotals, weekStartMonday(today), today, "This week", extra),
-    month: sumPeriod(daysForTotals, monthStart(today), today, "This month", extra),
+    fan,
+    humid,
+    week: withHumid(
+      withLoftFan(sumPeriod(daysForTotals, weekStartMonday(today), today, "This week", extra), fan.days),
+      days,
+      humid,
+      today,
+    ),
+    month: withHumid(
+      withLoftFan(sumPeriod(daysForTotals, monthStart(today), today, "This month", extra), fan.days),
+      days,
+      humid,
+      today,
+    ),
     ccf: {
       baseline: CCF_BASELINE,
       recentAvg,

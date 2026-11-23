@@ -9,14 +9,14 @@ export const metadata: Metadata = {
   description:
     "Stories from building Tolley and Cordport: practical tools, live shows, AI-assisted work, and the lessons behind them.",
   alternates: {
-    canonical: "https://tolley.io/blog",
+    canonical: "https://www.tolley.io/blog",
   },
   openGraph: {
     title: "The Tolley Build Journal",
     description:
       "Real builds, useful tools, and behind-the-scenes stories from Jared Tolley.",
     type: "website",
-    url: "https://tolley.io/blog",
+    url: "https://www.tolley.io/blog",
   },
 };
 
@@ -39,11 +39,11 @@ const blogIndexJsonLd = {
   "@type": "Blog",
   name: "Tolley Build Journal",
   description: "Stories from building practical tools and businesses with AI.",
-  url: "https://tolley.io/blog",
+  url: "https://www.tolley.io/blog",
   publisher: {
     "@type": "Organization",
     name: "Tolley.io",
-    url: "https://tolley.io",
+    url: "https://www.tolley.io",
   },
 };
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { RENTAL_CONTACT_EMAIL, RENTAL_CONTACT_PHONE, RENTAL_COMPANY } from "@/lib/rental";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "https://www.tolley.io/rental/terms" },
   title: "Rental Terms & Conditions | Your KC Homes LLC",
   description:
     "General rental terms and conditions for all equipment rentals from Your KC Homes LLC — tables, chairs, trailers, generators, moving supplies, and more.",

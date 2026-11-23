@@ -65,30 +65,32 @@ export function WdEmailBar() {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-2">
             {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-              <p className="text-sm font-bold text-blue-900 sm:shrink-0">
+            <div className="grid min-w-0 gap-2 sm:grid-cols-2 sm:gap-3">
+              <p className="text-sm font-bold text-blue-900 sm:col-span-2">
                 Service updates & availability alerts
               </p>
               <input
                 type="email"
+                aria-label="Email address"
                 required
                 placeholder="you@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="wd-input flex-1 text-sm"
+                className="wd-input min-w-0 w-full text-sm"
               />
               <input
                 type="tel"
+                aria-label="Mobile phone (optional)"
                 placeholder="Mobile (optional)"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="wd-input flex-1 text-sm"
+                className="wd-input min-w-0 w-full text-sm"
                 autoComplete="tel"
               />
               <button
                 type="submit"
                 disabled={status === "sending"}
-                className="rounded-full bg-blue-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-blue-700 disabled:opacity-50 sm:shrink-0"
+                className="rounded-full bg-blue-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-blue-700 disabled:opacity-50 sm:col-span-2 sm:justify-self-start"
               >
                 {status === "sending" ? "..." : "Subscribe"}
               </button>

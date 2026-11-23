@@ -4,8 +4,15 @@ import { prisma } from "@/lib/prisma";
 import { principal, body, endpoint, json } from "@/lib/company/auth";
 import { knowledge } from "@/lib/company/store";
 import { fingerprint } from "@/lib/company/policy";
+import { publicKnowledge } from "@/lib/company/public-knowledge";
 export const runtime = "nodejs";
-export async function GET(req: NextRequest) { return endpoint(async () => { const p = req.headers.has("authorization") ? await principal(req, "knowledge:read") : null; return json({ items: await knowledge(p?.userId || null, req.nextUrl.searchParams.get("q") || "") }); }); }
+export async function GET(req: NextRequest) { return endpoint(async () => {
+  const p = req.headers.has("authorization") ? await principal(req, "knowledge:read") : null;
+  const query = req.nextUrl.searchParams.get("q") || "";
+  // Anonymous discovery must survive a paused worker or expired learned records.
+  // Public facts come from the same deployed registry as the visible service pages.
+  return json({ items: p ? await knowledge(p.userId, query) : publicKnowledge(query) });
+}); }
 export async function POST(req: NextRequest) { return endpoint(async () => {
  const p = await principal(req, "knowledge:write");
  const v = z.object({ title: z.string().min(1).max(200), content: z.string().min(1).max(20000), reference: z.string().min(1).max(100) }).strict().parse(await body(req));
