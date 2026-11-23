@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.71.1';
+export const APP_VERSION = '1.72';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,7 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '1.72', date: '2026-11-23', title: 'Home heat planner in shadow', items: ['The private Heat dashboard shows proposed warm-up plans, decision history, learning and controller health.', 'Comfort requests are acknowledged by Spark; shadow mode changes proposals without operating thermostats.'] },
   { version: '1.71.1', date: '2026-11-22', title: 'Network consulting for home and business', items: ['Tolley Net offers network planning, Wi-Fi and gaming setup, and small-business infrastructure consulting in the Kansas City metro.', 'Explore assessment deliverables and request a free phone consult with your project needs, timing, and a phone number or email.'] },
   { version: '1.71', date: '2026-11-20', title: 'Home and gaming network setup', items: ['Tolley Net is in-person network setup in Independence and the Kansas City metro, with a free consult and a custom quote.', 'Tell Jared what is wrong with the Wi-Fi, whether you game, and when to talk. The request is saved the same way as a cleanout quote, and he gets the alert.'] },
   { version: '1.70.3', date: '2026-11-22', title: 'Public pages and AI discovery checks', items: ['Fixed phone and tablet layouts for washer/dryer updates, market navigation, legal pages and agent guides.', 'Corrected public canonical URLs, retired links, washer/dryer structured prices and ended estate-sale labels.', 'Public knowledge lookups read current service facts automatically, and daily checks cover sitemap pages, search crawlers and structured data.'] },

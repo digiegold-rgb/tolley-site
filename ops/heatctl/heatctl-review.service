@@ -1,0 +1,6 @@
+[Unit]
+Description=Crazy Monkey nightly shadow comparison
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/heatctl/review.py
+UMask=0077

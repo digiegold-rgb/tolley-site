@@ -19,6 +19,7 @@ import {
   statusLabel,
 } from "@/lib/heat/format";
 import { CcfChart, DailyChart, FanDailyChart, FanEffectChart, TempChart } from "./charts";
+import { PlannerPanel } from "./planner-panel";
 
 function tone(hvac: Zone["hvac"]): string {
   if (hvac === "heat") return "text-amber-300";
@@ -196,6 +197,8 @@ export function HeatDashboard({ initial, unavailable = false }: { initial: HeatV
         <FurnaceCard name="Upstairs" zone={latest?.upstairs ?? { setpoint: null, mode: null, hvac: "off", fanMode: null }} />
         <FurnaceCard name="Downstairs" zone={latest?.downstairs ?? { setpoint: null, mode: null, hvac: "off", fanMode: null }} />
       </section>
+
+      <PlannerPanel />
 
       <section className="mt-3 rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.03] p-4">
         <h2 className="text-sm text-white/55">{includeFan || includeHumid ? "Today’s energy" : "Today’s gas"}</h2>
