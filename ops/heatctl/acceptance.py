@@ -4,7 +4,7 @@ import sqlite3
 import time
 from collections import Counter
 from datetime import datetime
-from common import ROOT,TZ
+from common import ROOT,TZ,load
 
 
 def check(now=None,root=ROOT):
@@ -30,6 +30,10 @@ def check(now=None,root=ROOT):
     result["ready_for_owner_review"]=result["elapsed_days"]>=5 and result["complete_observation_days"]>=5 and result["cold_mornings"]>=3
     result["live_comfort_acceptance"]="Pending: two weeks after approved cutover"
     result["cloud_write_readback_acceptance"]="Pending live observation; shadow cannot prove a write landed"
+    gate=load(root/"cutover.json",{}) or {}
+    waiver=gate.get("shadow_wait_waiver",{})
+    result["shadow_wait_waived_by_owner"]=waiver.get("approved") is True and bool(waiver.get("owner_instruction")) and bool(waiver.get("recorded_at"))
+    result["rollout_basis"]="Owner-approved live learning; shadow trial not claimed complete" if result["shadow_wait_waived_by_owner"] else "Observed shadow trial"
     return result
 
 

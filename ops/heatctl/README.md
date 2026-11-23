@@ -3,7 +3,9 @@
 Source for `~/heatctl`, installed November 23, 2026. The November 23 **review and
 implementation guide** takes precedence over the older handoff where targets,
 setpoint bounds and control priorities differ. Runtime data and credentials are
-not committed. Deployment is **shadow**; legacy controls continue operating.
+not committed. Jared subsequently authorized **live learning**, waiving only the
+five-day waiting period. See [current operations](OPERATIONS.md) and the runtime
+`cutover.json` / `commissioning-result.json` for actual deployment evidence.
 
 ## Goal and current ownership
 
@@ -14,7 +16,8 @@ not the room-temperature reference. Prefer gentle recovery but never claim stage
 
 Shadow uses `~/humid/state.json` and `~/sensors/latest.json`. It makes **no TCC or
 SDM calls** and never reads a thermostat credential. Open-Meteo is cached locally.
-Existing `humid.service` remains the cloud poller; `fanctl` remains paused;
+While shadow, existing `humid.service` is the cloud poller; `fanctl` remains paused.
+In live operation both legacy services are disabled and heatctl owns the poller.
 `loftfan.service` remains the sole Airius writer at .44. No legacy plug .13–.16
 is read or modified by this controller.
 
@@ -23,8 +26,9 @@ the existing persistent Honeywell session/collector through `io_live.py`; stop
 `humid.service` and `fanctl.service` at cutover. It preserves the legacy telemetry
 and CSV formats used by heatpush and furnace-rollup. Nest token refresh then has
 one owner on Spark, conditional on stopping the cloud copy. Loftfan stays delegated.
-The live adapter is tested with mocks, not real thermostat writes; that requires
-the later owner-approved cutover. Hardware identity must be pinned in the manifest.
+Hardware identity is pinned in the manifest. Supervised commissioning verifies
+real fan AUTO and relay OFF and sends the Nest's existing target with readback;
+this is not a forced heat-cycle or morning-comfort acceptance test.
 
 ## Provisional shadow settings
 
@@ -98,7 +102,7 @@ Partial observation coverage is labeled and does not replace full-day old totals
 `~/heatctl/reviews/` and the planner panel, preserving Glow's original nightly
 review. Keep cloud reviews as read-only reporting after cutover.
 
-## Live gate and cutover (NOT executed)
+## Live gate and cutover
 
 `heatctl acceptance` measures five elapsed days, five days with >=1,000 usable
 observations, and three cold mornings with >=120 valid samples between 03–07.
@@ -106,13 +110,23 @@ These are minimum review gates, not proof of comfort or savings. Shadow cannot
 prove a setpoint write's readback success. Two-week live comfort acceptance and
 seven-day cloud-write reliability remain pending until actual operation.
 
+The owner explicitly waived this waiting period on November 23. A separate
+`shadow_wait_waiver` records the original instruction, approval and timestamp.
+It does not claim the shadow acceptance passed and cannot waive the remaining
+ownership, device-identity, commissioning or airflow-review checks.
+
 Before cutover, record the owner's explicit **go** and confirmed schedule/targets,
 loft overnight policy, humidifier airflow/interlock review, and verified device
 identities in `~/heatctl/cutover.json`. Required flags are checked by code:
 `owner_go`, `cloud_control_jobs_paused`, `cloud_nest_refresh_stopped`,
-`shadow_acceptance_passed`, `comfort_settings_confirmed`,
+`comfort_settings_confirmed`, `commissioning: "passed"`,
 `airflow_interlocks_reviewed`, plus `humidifier_device_id` and `nest_device_name`.
 Do not write true flags without their corresponding verified evidence.
+
+The owner confirmed the five Glow controls/watch routines are paused, tomorrow's
+re-enable job is deleted, no independent Nest refresher remains, and retained
+nightly/weekly reporting does not command thermostats. This confirmation is
+recorded with the cutover; no claim of direct access to Grok's scheduler is made.
 
 1. On Glow, pause morning-warm-up, night-setback, downstairs-heat-off,
    cold-day-comfort-check and adaptive-heat-watch-only. Stop the box Nest refresher.
@@ -142,17 +156,17 @@ safety. Cloud jobs cannot be paused/resumed by a pretend Spark one-liner.
 | Guide step | Current implementation / acceptance |
 |---|---|
 | 0 architecture | Modular planner, config, dry CLI and shadow service implemented; tests pass. |
-| 1 shared I/O | Shadow reads existing poller only; live single-owner adapter prepared. Remote token retirement and 7 outage-free days pending. |
-| 2 writes | Mocked read-before-write, readback, timeout reconciliation, retries, backoff, bounds and hourly cap. Real write statistics pending go. |
+| 1 shared I/O | Live heatctl is the single local owner; legacy writers disabled and remote retirement owner-confirmed. Seven-day reliability pending. |
+| 2 writes | Read-before-write, readback, timeout reconciliation, retries, bounds and hourly cap tested. Fan AUTO and Nest same-target command path verified live; long-term write statistics pending. |
 | 3 learning | Per-condition observed learning, counts and history implemented; multi-day calibration pending. |
 | 4 morning | Forecast/recovery calculation and cold-morning fixture pass; three observed mornings and two-week comfort outcome pending. |
 | 5 Nest | Supplemental high/idle/night rules and satisfaction metrics implemented; actual comfort delivery must be observed. |
 | 6 escalation | Pre-7 AM L3 fixture passes; 10-minute/3-per-hour caps and >5F dual-change restriction prepared. Savings/comfort improvement unproven. |
-| 7 periods | Day/raw/evening/setback implemented; real 22:00 readback pending go. |
-| 8 humidity | Heat/purge/stove, real upstairs airflow, RH cap/stale timeout implemented. Wiring review and day-long runtime ratio pending. |
-| 9 overrides | Expiring CLI/site requests and external-raise holds implemented and tested in shadow. |
-| 10 watchdog | Independent unit, durable alerts, single-owner live fallback prepared. No live safety write tested. |
-| 11 rollout | Shadow running; measured elapsed-time gate. No cutover performed; Glow job manager remains external. |
+| 7 periods | Day/raw/evening/setback implemented; first live 22:00 outcome pending. |
+| 8 humidity | Relay OFF verified, heat/purge/stove policy and fresh airflow recheck active. Physical interlocks unverified; day-long runtime ratio pending. |
+| 9 overrides | Expiring CLI/site requests and external-raise holds implemented; observed holds preserved at cutover. |
+| 10 watchdog | Independent unit, durable alerts, single-owner live fallback enabled. No forced live safety-temperature test. |
+| 11 rollout | Owner-approved live learning replaces shadow wait. Actual shadow acceptance remains incomplete; remote pause is owner-confirmed. |
 | 12 hardware | Not commissioned or purchased. Stage always labeled unknown. |
 
 Tests: `python3 -m unittest -v test_heatctl.py` here; website schema tests in
