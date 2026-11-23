@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.70.3';
+export const APP_VERSION = '1.71';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,7 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '1.71', date: '2026-11-20', title: 'Home and gaming network setup', items: ['Tolley Net is in-person network setup in Independence and the Kansas City metro, with a free consult and a custom quote.', 'Tell Jared what is wrong with the Wi-Fi, whether you game, and when to talk. The request is saved the same way as a cleanout quote, and he gets the alert.'] },
   { version: '1.70.3', date: '2026-11-22', title: 'Public pages and AI discovery checks', items: ['Fixed phone and tablet layouts for washer/dryer updates, market navigation, legal pages and agent guides.', 'Corrected public canonical URLs, retired links, washer/dryer structured prices and ended estate-sale labels.', 'Public knowledge lookups read current service facts automatically, and daily checks cover sitemap pages, search crawlers and structured data.'] },
   { version: '1.70.2', date: '2026-11-16', title: 'Consistent font delivery', items: ['Font downloads are recognized by their file format, keeping publication reliable when the font provider changes its URLs.'] },
   { version: '1.70.1', date: '2026-11-16', title: 'Reliable typography for the new company site', items: ['The Nunito typeface is bundled with the site so a third-party font download cannot block publication.'] },

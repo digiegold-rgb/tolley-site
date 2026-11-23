@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   const days = Math.max(1, Math.min(90, Number(req.nextUrl.searchParams.get("days")) || 30));
   const since = new Date(Date.now() - days * 86400000);
   const [leads, payments, events, health, actions] = await Promise.all([
-    prisma.growthLead.findMany({ where: { AND: [{ OR: [{ source: { in: ["cleanouts-page", "discovery-inquiry", "manual-discovery", "discovery-action"] } }, { attribution: { not: Prisma.DbNull } }, { discoveryStage: { not: null } }] }, { OR: [{ createdAt: { gte: since } }, { discoveryRevenue: { some: { collectedAt: { gte: since } } } }] }] }, orderBy: { createdAt: "desc" }, take: 5001 }),
+    prisma.growthLead.findMany({ where: { AND: [{ OR: [{ source: { in: ["cleanouts-page", "tolley-net", "discovery-inquiry", "manual-discovery", "discovery-action"] } }, { attribution: { not: Prisma.DbNull } }, { discoveryStage: { not: null } }] }, { OR: [{ createdAt: { gte: since } }, { discoveryRevenue: { some: { collectedAt: { gte: since } } } }] }] }, orderBy: { createdAt: "desc" }, take: 5001 }),
     prisma.discoveryRevenue.findMany({ where: { collectedAt: { gte: since } }, orderBy: { collectedAt: "desc" }, take: 5001 }),
     prisma.siteEvent.findMany({ where: { createdAt: { gte: since }, event: { in: ["phone_click", "sms_click", "inquiry_success"] } }, take: 10001, orderBy: { createdAt: "desc" } }),
     prisma.siteEvent.findFirst({ where: { event: "discovery_health" }, orderBy: { createdAt: "desc" }, select: { createdAt: true, meta: true } }),

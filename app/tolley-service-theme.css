@@ -1,14 +1,14 @@
 /* Compatibility skin for existing service components. Every rule is scoped to
  * the public frame; shared Shop components keep their app theme in T-Agent.
  * New public components should use the semantic classes in tolley-theme.css. */
-.tolley-site :is(.wd-page, .pools-page, .homes-page, .trailer-page, .generator-page, .hvac-page, .lastmile-page, .moving-page, .rental-page, .tables-page, .picnic-page, .kerplunk-page, .estate-page, .cleanouts-page, .shop-page, .drive-page, .lp-page) {
+.tolley-site :is(.wd-page, .pools-page, .homes-page, .trailer-page, .generator-page, .hvac-page, .lastmile-page, .moving-page, .rental-page, .tables-page, .picnic-page, .kerplunk-page, .estate-page, .cleanouts-page, .net-page, .shop-page, .drive-page, .lp-page) {
   background: var(--tolley-bg); color: var(--tolley-text); font-family: var(--tolley-font); min-height: 0;
   --font-fredoka: var(--font-sora); --font-nunito: var(--font-sora); --font-poppins: var(--font-sora);
   --font-oswald: var(--font-sora); --font-barlow: var(--font-sora); --font-barlow-condensed: var(--font-sora);
   --font-fraunces: Georgia; --font-lp-display: var(--font-sora); --font-lp-body: var(--font-sora); --font-lp-marker: Georgia;
 }
 .tolley-site .estate-page { --es-ink: var(--tolley-bg); --es-panel: var(--tolley-surface); --es-panel-2: var(--tolley-raised); --es-line: var(--tolley-line); --es-brass: var(--tolley-accent); --es-brass-bright: var(--tolley-accent-hover); --es-cream: var(--tolley-text); --es-cream-dim: var(--tolley-muted); }
-.tolley-site .cleanouts-page { --tc-bg: var(--tolley-bg); --tc-panel: var(--tolley-surface); --tc-panel-2: var(--tolley-raised); --tc-line: var(--tolley-line); --tc-orange: var(--tolley-accent); --tc-orange-deep: var(--tolley-accent-hover); --tc-steel: var(--tolley-muted); }
+.tolley-site :is(.cleanouts-page, .net-page) { --tc-bg: var(--tolley-bg); --tc-panel: var(--tolley-surface); --tc-panel-2: var(--tolley-raised); --tc-line: var(--tolley-line); --tc-orange: var(--tolley-accent); --tc-orange-deep: var(--tolley-accent-hover); --tc-steel: var(--tolley-muted); }
 .tolley-site .lp-page { --lp-bg: var(--tolley-bg); --lp-bg-2: var(--tolley-bg); --lp-panel: var(--tolley-surface); --lp-panel-2: var(--tolley-raised); --lp-line: var(--tolley-line); --lp-amber: var(--tolley-accent); --lp-amber-deep: var(--tolley-accent-hover); --lp-rust: var(--tolley-accent); --lp-steel: var(--tolley-muted); }
 .tolley-site :is(.site-dot-grid-blue, .site-dot-grid-cyan, .site-dot-grid-sky, .site-dot-grid-purple, .site-dot-grid-amber, .site-dot-grid-yellow, .site-dot-grid-teal, .site-dot-grid-emerald, .wd-bubbles, .pools-floats, .gen-spark, .gen-arc, .gen-pulse-ring) { display: none; }
 .tolley-site :is(.homes-grid, .rent-dots, .lp-pegboard) { background-image: none; }
