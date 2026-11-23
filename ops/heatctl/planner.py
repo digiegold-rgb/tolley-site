@@ -47,7 +47,8 @@ def decide(obs, weather, model, state, override, cfg, now):
     if outdoor is not None and outdoor < 40: wake_target = cfg["cold_wake_target"]
     warm_rate = max(0.25,rate(model,"warmup_rate","both|"+wb,2.1))
     cool_rate = max(0,rate(model,"cool_rate","blower_off|"+wb,0.9 if outdoor is not None and outdoor < 40 else 0.4))
-    buffer = cfg["warmup_buffer_min"]/60 + (0.25 if (weather.get("feels_f") is not None and weather["feels_f"]<25) else 0)
+    recovery_feels=min((h["feels_f"] for h in forecast if h.get("feels_f") is not None),default=weather.get("feels_f"))
+    buffer = cfg["warmup_buffer_min"]/60 + (0.25 if recovery_feels is not None and recovery_feels<25 else 0)
     lead = max(0,(wake_target-projected_start_f+cool_rate*hours)/(warm_rate+cool_rate))+buffer if projected_start_f is not None else None
     start = max(wake-timedelta(hours=lead),at(wake,cfg["earliest_warmup"])) if lead is not None else None
     today_wake = at(dt,cfg["weekend_wake"] if dt.weekday()>=5 else cfg["wake"])
@@ -130,6 +131,9 @@ def decide(obs, weather, model, state, override, cfg, now):
     if any(not v["fresh"] for v in obs["thermostats"].values()):alarms.append("THERMOSTAT_STALE")
     if not weather.get("fresh"):alarms.append("FORECAST_UNAVAILABLE")
     if fallback and now-fallback>=1800:alarms.append("HONEYWELL_WRITE_FAILURE_30M")
+    if period=="setback" and now-night.timestamp()>=900:
+        current=obs["thermostats"]["honeywell"]
+        if current.get("heat_sp")!=night_sp or current.get("fan")!="auto":alarms.append("SETBACK_NOT_CONFIRMED_15M")
     safety=living is not None and (living<55 or living>80)
     if safety:
         up={"heat_sp":60,"mode":"heat","fan":"auto"};nest={"mode":"OFF"} if living>80 else nest
