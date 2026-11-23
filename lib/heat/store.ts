@@ -27,6 +27,10 @@ type SnapshotRow = {
   loftFanW: number | null;
   loftFanEnergyWh: number | null;
   loftFanDecision: string | null;
+  humidOn?: boolean | null;
+  humidTargetRh?: number | null;
+  humidTodayH?: number | null;
+  humidDecision?: string | null;
 };
 
 function hvacOf(value: string): Hvac {
@@ -59,6 +63,12 @@ function fromSnapshot(row: SnapshotRow): HeatSnapshot {
       energyWh: row.loftFanEnergyWh,
       decision: row.loftFanDecision,
     },
+    humid: {
+      on: row.humidOn ?? null,
+      targetRh: row.humidTargetRh ?? null,
+      todayH: row.humidTodayH ?? null,
+      decision: row.humidDecision ?? null,
+    },
   };
 }
 
@@ -82,6 +92,10 @@ function snapshotData(row: HeatSnapshot) {
     loftFanW: row.loftFan.watts,
     loftFanEnergyWh: row.loftFan.energyWh,
     loftFanDecision: row.loftFan.decision,
+    humidOn: row.humid?.on ?? null,
+    humidTargetRh: row.humid?.targetRh ?? null,
+    humidTodayH: row.humid?.todayH ?? null,
+    humidDecision: row.humid?.decision ?? null,
   };
 }
 
@@ -101,6 +115,11 @@ function dayData(row: HeatDay) {
     estCostLow: row.estCostLow,
     estCostHigh: row.estCostHigh,
     ccfPerHdd: row.ccfPerHdd,
+    humidOnH: row.humidOnH ?? null,
+    humidCycles: row.humidCycles ?? null,
+    humidKwh: row.humidKwh ?? null,
+    humidCost: row.humidCost ?? null,
+    humidWaterGal: row.humidWaterGal ?? null,
   };
 }
 
@@ -131,6 +150,11 @@ export async function readHeatRows(now: Date): Promise<HeatRows> {
       estCostLow: row.estCostLow,
       estCostHigh: row.estCostHigh,
       ccfPerHdd: row.ccfPerHdd,
+      humidOnH: row.humidOnH,
+      humidCycles: row.humidCycles,
+      humidKwh: row.humidKwh,
+      humidCost: row.humidCost,
+      humidWaterGal: row.humidWaterGal,
     })),
     review: review ? { date: review.date, text: review.text } : null,
   };

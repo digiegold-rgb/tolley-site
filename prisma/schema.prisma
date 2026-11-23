@@ -6738,6 +6738,10 @@ model HeatSnapshot {
   loftFanW         Float?
   loftFanEnergyWh  Float?
   loftFanDecision  String?
+  humidOn          Boolean?
+  humidTargetRh    Float?
+  humidTodayH      Float?
+  humidDecision    String?
   receivedAt       DateTime @default(now())
 }
 
@@ -6757,6 +6761,11 @@ model HeatDay {
   estCostLow       Float?
   estCostHigh      Float?
   ccfPerHdd        Float?
+  humidOnH         Float?
+  humidCycles      Int?
+  humidKwh         Float?
+  humidCost        Float?
+  humidWaterGal    Float?
   receivedAt       DateTime @default(now())
   updatedAt        DateTime @updatedAt
 }
