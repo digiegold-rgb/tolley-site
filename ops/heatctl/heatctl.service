@@ -1,0 +1,15 @@
+[Unit]
+Description=Crazy Monkey house HVAC planner (shadow until approved cutover)
+After=network-online.target house-sensors.service
+Wants=network-online.target
+[Service]
+Type=simple
+ExecStart=%h/humid/.venv/bin/python %h/heatctl/controller.py loop
+WorkingDirectory=%h/heatctl
+Restart=always
+RestartSec=10
+TimeoutStopSec=150
+UMask=0077
+NoNewPrivileges=true
+[Install]
+WantedBy=default.target

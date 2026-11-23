@@ -6766,6 +6766,7 @@ model HeatDay {
   humidKwh         Float?
   humidCost        Float?
   humidWaterGal    Float?
+  planner          Json?
   receivedAt       DateTime @default(now())
   updatedAt        DateTime @updatedAt
 }
@@ -6775,4 +6776,43 @@ model HeatReview {
   date      String   @id
   text      String
   updatedAt DateTime @updatedAt
+}
+
+/// Planner events are immutable/idempotent by producer UUID; retained two years.
+model HeatDecision {
+  id         String   @id
+  ts         DateTime
+  kind       String
+  season     String
+  mode       String
+  period     String?
+  reasonCode String?
+  why        String?
+  payload    Json
+  receivedAt DateTime @default(now())
+  @@index([ts])
+  @@index([kind, ts])
+}
+
+model HeatLearned {
+  id         String   @id
+  ts         DateTime
+  season     String
+  param      String
+  key        String
+  value      Float
+  n          Int
+  prevValue  Float?
+  @@index([param, key, ts])
+}
+
+/// Browser requests do not themselves operate equipment. Spark acknowledges separately.
+model HeatCommand {
+  id        String   @id
+  createdAt DateTime @default(now())
+  action    String
+  params    Json
+  status    String   @default("queued")
+  updatedAt DateTime @updatedAt
+  @@index([status, createdAt])
 }

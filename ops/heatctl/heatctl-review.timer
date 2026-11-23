@@ -1,0 +1,7 @@
+[Unit]
+Description=Generate the local nightly planner review
+[Timer]
+OnCalendar=*-*-* 23:25:00 America/Chicago
+Persistent=true
+[Install]
+WantedBy=timers.target

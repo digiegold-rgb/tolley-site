@@ -3,6 +3,8 @@ import { heatIngestAuthorized } from "@/lib/heat/auth";
 import { parseHeatBody } from "@/lib/heat/parse";
 import { saveHeatIngest } from "@/lib/heat/store";
 import { rateLimitByIp } from "@/lib/rate-limit";
+import { parsePlannerEvents } from "@/lib/heat/planner-schema";
+import { savePlannerEvents } from "@/lib/heat/planner-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,6 +37,13 @@ export async function POST(request: NextRequest) {
     json = JSON.parse(text);
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+  if (json && typeof json === "object" && "events" in json) {
+    let events;
+    try { events = parsePlannerEvents((json as { events: unknown }).events); }
+    catch { return NextResponse.json({ error: "Invalid planner events" }, { status: 400 }); }
+    try { return NextResponse.json({ ok: true, ...await savePlannerEvents(events) }); }
+    catch { return NextResponse.json({ error: "Planner storage unavailable" }, { status: 503 }); }
   }
   const parsed = parseHeatBody(json);
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });

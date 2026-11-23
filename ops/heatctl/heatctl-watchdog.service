@@ -1,0 +1,7 @@
+[Unit]
+Description=Independent HVAC planner health and temperature check
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/heatctl/watchdog.py
+UMask=0077
+NoNewPrivileges=true
