@@ -51,7 +51,7 @@ export default function PcPage() {
     </ol></section>
     <section className="pc-request" id="request"><div className="pc-wrap pc-request-grid"><div className="pc-request-copy"><p className="pc-eyebrow">LET’S PUT SOMETHING TOGETHER</p><h2>Big idea.<br/>Parts in a box.<br/><em>Start here.</em></h2><p>A rough idea is enough. Tell me what you have in mind and I’ll get back to you to work out the details.</p><div className="pc-contact"><span>PREFER A CONVERSATION?</span><a href={PC_TEL}>{PC_PHONE}</a><p>Call or <a href={PC_SMS}>text Jared</a>.</p></div><p className="pc-small">Based in Independence, Missouri.<br/>Serving the Kansas City metro by arrangement.<br/>Share your city to confirm coverage and handoff.</p></div><PcBuildInquiry/></div></section>
     <div className="pc-details"><PublicOfferDetails name="pc"/></div>
-    <footer className="pc-footer pc-wrap"><Link href="/" className="pc-brand">TOLLEY<span>PC</span></Link><p>Personal builds. Purposeful machines.</p><Link href="/services">More from Tolley ↗</Link></footer>
+    <footer className="pc-footer pc-wrap"><Link href="/" className="pc-brand">TOLLEY<span>PC</span></Link><p>Personal builds. Purposeful machines.</p><Link href="/net">Network consulting &amp; Wi-Fi setup</Link><Link href="/services">More from Tolley ↗</Link></footer>
     <div className="pc-mobile-cta"><a href={PC_SMS}>Text Jared</a><a href="#request">Start your build ↗</a></div>
   </main>;
 }

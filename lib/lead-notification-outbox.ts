@@ -33,9 +33,9 @@ export async function enqueueCleanoutNotification(
 /** Same Telegram outbox as cleanout quotes. kind "net" keeps the alert distinguishable. No schema change. */
 export async function enqueueNetNotification(
   tx: Prisma.TransactionClient, leadId: string,
-  contact: { name: string; phone: string; city: string },
+  contact: { name: string; phone: string; email?: string; city: string },
 ) {
-  const message = `Tolley Net request: ${contact.name || "(no name)"} ${contact.phone || "(no phone)"}` +
+  const message = `Tolley Net request: ${contact.name || "(no name)"} ${contact.phone || contact.email || "(no contact)"}` +
     (contact.city ? ` — ${contact.city}` : "");
   await tx.leadNotification.createMany({ skipDuplicates: true, data: {
     id: `net:${leadId}:telegram`, kind: "net", leadId, channel: "telegram",

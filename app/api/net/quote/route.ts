@@ -7,7 +7,7 @@ import { recordLeadCustomer } from "@/lib/customer-history/store";
  * separate because the cleanouts handler hardcodes the cleanout offer and
  * its ad-conversion payload. Source is tolley-net and offer is net.
  *
- * A name, a 7-digit phone number, or a valid email is required. Anything
+ * A 7-digit phone number or a valid email is required. Anything
  * else on the form can be missing and the lead is still saved.
  */
 
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       },
     });
     await recordLeadCustomer(tx, "growth", created, { sessionId: body.sessionId });
-    await enqueueNetNotification(tx, created.id, { name: quote.name, phone: quote.phone, city: quote.city });
+    await enqueueNetNotification(tx, created.id, { name: quote.name, phone: quote.phone, email: quote.email, city: quote.city });
     return created;
   });
 

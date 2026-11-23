@@ -134,7 +134,7 @@ assert.equal(creates[0].name, "Ada Gamer");
 assert.equal(creates[0].phone, "816-555-0100");
 assert.equal(creates[0].email, "ada@example.com");
 assert.equal(creates[0].city, "Independence");
-assert.match(creates[0].notes, /What's wrong: Ping spikes upstairs/);
+assert.match(creates[0].notes, /Project needs: Ping spikes upstairs/);
 assert.match(creates[0].notes, /Gaming: yes/);
 assert.equal(creates[0].attribution.offer, "net");
 assert.equal(creates[0].attribution.source, "tolley-net");
@@ -150,7 +150,13 @@ assert.equal(creates[1].email, null);
 assert.match(creates[1].notes, /Email as typed: not an email/);
 
 const nameOnly = await post({ name: "Name Only" });
-assert.equal(nameOnly.status, 200);
+assert.equal(nameOnly.status, 400);
+assert.equal(creates.length, 2, "a name without reachable contact is not saved");
+const emailOnly = await post({ email: "office@example.com", projectType: "Small business", organization: "Example Office", timeline: "Next month" });
+assert.equal(emailOnly.status, 200);
+assert.match(creates[2].notes, /Business \/ organization: Example Office/);
+assert.match(creates[2].notes, /Project timing: Next month/);
+assert.equal(creates[2].email, "office@example.com");
 assert.equal(creates[2].offer, "net");
 assert.equal(creates[2].source, "tolley-net");
 assert.equal(creates[2].phone, null);
@@ -158,7 +164,7 @@ assert.equal(creates[2].phone, null);
 await new Promise((resolvePromise) => setTimeout(resolvePromise, 0));
 assert.equal(alerts.length, 3);
 assert.deepEqual(alerts[0], { leadId: "lead_test_1", contact: {
-  name: "Ada Gamer", phone: "816-555-0100", city: "Independence",
+  name: "Ada Gamer", phone: "816-555-0100", email: "ada@example.com", city: "Independence",
 } });
 assert.deepEqual(deliveries, ["lead_test_1", "lead_test_2", "lead_test_3"]);
 

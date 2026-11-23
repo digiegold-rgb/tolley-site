@@ -202,7 +202,7 @@ const DIRECTORY_DISPLAY: Record<string, DisplayMeta> = {
   net: {
     title: "Tolley Net",
     group: "Home Services",
-    tagline: "Home and gaming network setup, installed by Jared",
+    tagline: "Network consulting for home & small business",
     bullets: ["Independence, MO", "Free consult", "Custom quote after consult"],
     emoji: "📡",
     accent: "sky",

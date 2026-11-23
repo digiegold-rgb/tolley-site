@@ -141,8 +141,10 @@ test("Tolley Net is a public offering with the cleanouts phone and no invented p
   const faqLd = discoveryFaqJsonLd(net)!;
   assert.equal(faqLd["@type"], "FAQPage");
   const text = discoveryText(true);
-  const section = text.split("\n## ").find(part => part.startsWith("Tolley Net"));
+  const section = text.split("\n## ").find(part => part.startsWith(net.title));
   assert.ok(section, "llms text includes Tolley Net");
+  assert.match(section!, /small businesses/);
+  assert.match(section!, /network infrastructure consulting/i);
   assert.match(section!, /913-283-3826/);
   assert.match(section!, /Free consult/);
   assert.doesNotMatch(section!, /\$\d/);
