@@ -1,5 +1,5 @@
 [Unit]
-Description=Crazy Monkey house HVAC planner (shadow until approved cutover)
+Description=Crazy Monkey house HVAC planner
 After=network-online.target house-sensors.service
 Wants=network-online.target
 [Service]

@@ -48,7 +48,8 @@ def update(state,event,obs,cfg,now):
     daily["humid_water_gal"]=daily["humid_h"]*7
     daily["humid_water_usd"]=daily["humid_water_gal"]*cfg["water_usd_per_gal"] if cfg["water_usd_per_gal"] is not None else None
     daily["loft_usd"]=daily["loft_kwh"]*cfg["electric_usd_per_kwh"]
-    daily["comparison_note"]="Shadow plans are compared against observed existing controls; predictions are not achieved outcomes."
+    daily["comparison_note"]=("Live control: compare predictions with actual measurements; early learning remains provisional."
+        if cfg["mode"]=="live" else "Shadow plans are compared against observed existing controls; predictions are not achieved outcomes.")
     state["daily"]=daily
     state["last_report"]={"date":date,"t":now,"obs":obs,"event":{"period":event["period"],"plan":event["plan"]}}
     return daily

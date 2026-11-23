@@ -18,10 +18,16 @@ from journal import Journal
 def cutover_ready(cfg):
     if cfg["mode"]!="live":return
     gate=load(ROOT/"cutover.json",{}) or {}
-    required=("owner_go","cloud_control_jobs_paused","cloud_nest_refresh_stopped","shadow_acceptance_passed","comfort_settings_confirmed","airflow_interlocks_reviewed","humidifier_device_id","nest_device_name")
+    required=("owner_go","cloud_control_jobs_paused","cloud_nest_refresh_stopped","comfort_settings_confirmed","airflow_interlocks_reviewed","humidifier_device_id","nest_device_name")
     if not all(gate.get(k) for k in required):raise RuntimeError("Live blocked: cutover manifest incomplete")
+    if gate.get("commissioning")!="passed":raise RuntimeError("Live blocked: device command checks have not passed")
     from acceptance import check
-    if not check()["ready_for_owner_review"]:raise RuntimeError("Live blocked: five shadow days and three cold mornings not yet observed")
+    # Owner can explicitly choose live learning instead of the waiting period.
+    # This never waives writer ownership, identity, or airflow requirements.
+    waiver=gate.get("shadow_wait_waiver",{})
+    waived=waiver.get("approved") is True and bool(waiver.get("owner_instruction")) and bool(waiver.get("recorded_at"))
+    if not waived and not check()["ready_for_owner_review"]:
+        raise RuntimeError("Live blocked: shadow trial incomplete and no explicit owner waiting-period waiver")
     for unit in ("humid.service","fanctl.service"):
         r=subprocess.run(["systemctl","--user","is-active","--quiet",unit])
         if r.returncode==0:raise RuntimeError("Live blocked: legacy writer still active: "+unit)
@@ -70,8 +76,10 @@ def fetch_commands(cfg):
 
 
 async def tick(state,cfg,journal,backend=None,dry=False):
-    now=time.time()
     if backend:await backend.poll()
+    # Polling creates new observation timestamps; freshness must use a time
+    # AFTER the poll, otherwise every new live reading appears in the future.
+    now=time.time()
     obs=observations.read(now,cfg)
     forecast=await asyncio.to_thread(weather.read,now,cfg,True)
     if forecast.get("outdoor_f") is None:forecast["outdoor_f"]=obs.get("outdoor_fallback")
@@ -89,6 +97,7 @@ async def tick(state,cfg,journal,backend=None,dry=False):
     if backend:
         from actuator import Actuator
         await Actuator(backend,persist=lambda s:atomic(ROOT/"state.json",s)).apply(event,state,cfg,now,lambda e:journal.emit(e))
+        await backend.publish(event)
     daily=reports.update(state,event,obs,cfg,now)
     event["counters_today"]={"read_failures":daily["read_failures"],"nest_satisfied_below_target_samples":daily["nest_satisfied_below_target_samples"]}
     journal.emit(event,now)

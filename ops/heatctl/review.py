@@ -10,7 +10,7 @@ def main():
     cfg=config();state=load(ROOT/"state.json",{}) or {};d=state.get("daily",{})
     date=datetime.now(TZ).date().isoformat()
     if d.get("date")!=date:raise SystemExit("No current-day observations")
-    text=f'''# Crazy Monkey shadow comparison — {date}
+    text=f'''# Crazy Monkey {cfg['mode']} review — {date}
 
 Mode: {cfg['mode']}. Coverage: {d.get('coverage_h',0):.2f} hours since planner observation began.
 Actual equipment behavior comes from the existing telemetry, not proposed commands.
@@ -19,7 +19,7 @@ Actual equipment behavior comes from the existing telemetry, not proposed comman
 - Estimated gas: ${d.get('gas_usd_low',0):.2f}–${d.get('gas_usd_high',0):.2f}; stage is unknown, gas is not metered.
 - Blower-only: {d.get('blower_only_h',0):.2f} h; humidifiers: {d.get('humid_h',0):.2f} h.
 - Estimated humidifier electricity: ${d.get('humid_usd',0):.2f}; water: {d.get('humid_water_gal',0):.1f} gal, water price {cfg['water_usd_per_gal']}.
-- Wake temperature: {d.get('wake_actual_f')}F; shadow prediction: {d.get('wake_prediction_f')}F.
+- Wake temperature: {str(d['wake_actual_f'])+'F' if d.get('wake_actual_f') is not None else 'not observed'}; prediction: {str(d['wake_prediction_f'])+'F' if d.get('wake_prediction_f') is not None else 'not available'}.
 - Below target after wake: {d.get('below_target_min',0):.1f} min.
 - Nest heating while living room below target: {d.get('nest_runtime_below_target_h',0):.2f} h.
 - Stale/read-failed samples: {d.get('read_failures',0)}.

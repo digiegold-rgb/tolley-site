@@ -188,6 +188,59 @@ class PlannerTests(unittest.TestCase):
 
 
 class ActuatorTests(unittest.IsolatedAsyncioTestCase):
+    async def test_nest_does_not_send_redundant_eco_command(self):
+        from io_live import HouseIO
+        b=HouseIO.__new__(HouseIO)
+        b.nest_request=Mock(return_value={"traits":{"sdm.devices.traits.ThermostatMode":{"mode":"HEAT"},"sdm.devices.traits.ThermostatEco":{"mode":"OFF"}}})
+        await b.write_device("nest",{"mode":"HEAT","heat_sp":78})
+        self.assertEqual(b.nest_request.call_count,2)
+        self.assertEqual(b.nest_request.call_args.args[0],"sdm.devices.commands.ThermostatTemperatureSetpoint.SetHeat")
+
+    async def test_nest_heat_mode_precedes_eco_exit(self):
+        from io_live import HouseIO
+        b=HouseIO.__new__(HouseIO)
+        b.nest_request=Mock(return_value={"traits":{"sdm.devices.traits.ThermostatMode":{"mode":"OFF"},"sdm.devices.traits.ThermostatEco":{"mode":"MANUAL_ECO"}}})
+        await b.write_device("nest",{"mode":"HEAT","heat_sp":78})
+        self.assertEqual([c.args[0] for c in b.nest_request.call_args_list[1:]],[
+            "sdm.devices.commands.ThermostatMode.SetMode","sdm.devices.commands.ThermostatEco.SetMode","sdm.devices.commands.ThermostatTemperatureSetpoint.SetHeat"])
+
+    async def test_live_tick_reads_freshness_after_poll(self):
+        import controller
+        o,w=fixture();seen=[];clock=[timestamp()]
+        async def poll():clock[0]+=30
+        def read(now,cfg):seen.append(now);return o
+        b=Mock();b.poll=AsyncMock(side_effect=poll)
+        with patch("controller.time.time",side_effect=lambda:clock[0]),patch("controller.observations.read",side_effect=read),patch("controller.weather.read",return_value=w),patch("controller.load",return_value={}):
+            await controller.tick({},DEFAULTS,None,b,dry=True)
+        self.assertEqual(seen,[timestamp()+30])
+
+    async def test_humidifier_rechecks_airflow_and_fails_off(self):
+        from io_live import HouseIO
+        b=HouseIO.__new__(HouseIO);b.cfg={"shelly_url":"http://test"}
+        b.hw=Mock();b.hw.device.refresh=AsyncMock();b.hw.device.fan_running=False
+        b.h=Mock();b.h.shelly_rpc.return_value={"id":"verified-relay"}
+        with patch("io_live.load",return_value={"humidifier_device_id":"verified-relay"}):
+            with self.assertRaises(RuntimeError):await b.humidifier(True)
+        b.h.shelly_on.assert_not_called();b.h.shelly_off.assert_called_once()
+
+    async def test_humidifier_refresh_failure_fails_off(self):
+        from io_live import HouseIO
+        b=HouseIO.__new__(HouseIO);b.cfg={"shelly_url":"http://test"}
+        b.hw=Mock();b.hw.device.refresh=AsyncMock(side_effect=TimeoutError())
+        b.h=Mock();b.h.shelly_rpc.return_value={"id":"verified-relay"}
+        with patch("io_live.load",return_value={"humidifier_device_id":"verified-relay"}):
+            with self.assertRaises(TimeoutError):await b.humidifier(True)
+        b.h.shelly_on.assert_not_called();b.h.shelly_off.assert_called_once()
+
+    async def test_humidifier_live_verified_airflow_and_lease(self):
+        from io_live import HouseIO
+        b=HouseIO.__new__(HouseIO);b.cfg={"shelly_url":"http://test"}
+        b.hw=Mock();b.hw.device.refresh=AsyncMock();b.hw.device.fan_running=True
+        b.h=Mock();b.h.shelly_rpc.return_value={"id":"verified-relay"}
+        b.h.shelly_status.return_value={"output":True,"timer_duration":600}
+        with patch("io_live.load",return_value={"humidifier_device_id":"verified-relay"}):await b.humidifier(True)
+        b.h.shelly_on.assert_called_once_with("http://test",600)
+
     async def test_watchdog_shadow_cannot_write(self):
         with patch("io_live.HouseIO") as backend:
             self.assertEqual(await watchdog.recover(DEFAULTS,["ROOM_TEMPERATURE_SAFETY"]),"shadow_no_writes")
@@ -224,5 +277,32 @@ class ActuatorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(d["devices"]["honeywell"]["write"],"rate_limited")
         self.assertEqual(d["devices"]["nest"]["write"],"rate_limited")
 
+
+class CutoverTests(unittest.TestCase):
+    def gate(self):
+        g={k:True for k in ("owner_go","cloud_control_jobs_paused","cloud_nest_refresh_stopped","comfort_settings_confirmed","airflow_interlocks_reviewed")}
+        g.update(commissioning="passed",humidifier_device_id="relay",nest_device_name="nest",shadow_wait_waiver={"approved":True,"owner_instruction":"make it live", "recorded_at":"2026-11-23T14:00:00-06:00"})
+        return g
+
+    def test_explicit_owner_waiver_skips_only_wait(self):
+        with patch("controller.load",return_value=self.gate()),patch("controller.subprocess.run",return_value=Mock(returncode=3)),patch("acceptance.check",return_value={"ready_for_owner_review":False}):
+            cutover_ready(DEFAULTS|{"mode":"live"})
+
+    def test_waiver_cannot_bypass_competing_writers(self):
+        g=self.gate();g["cloud_control_jobs_paused"]=False
+        with patch("controller.load",return_value=g):
+            with self.assertRaises(RuntimeError):cutover_ready(DEFAULTS|{"mode":"live"})
+        with patch("controller.load",return_value=self.gate()),patch("controller.subprocess.run",return_value=Mock(returncode=0)):
+            with self.assertRaises(RuntimeError):cutover_ready(DEFAULTS|{"mode":"live"})
+
+    def test_no_waiver_still_requires_observed_trial(self):
+        g=self.gate();g.pop("shadow_wait_waiver")
+        with patch("controller.load",return_value=g),patch("acceptance.check",return_value={"ready_for_owner_review":False}):
+            with self.assertRaises(RuntimeError):cutover_ready(DEFAULTS|{"mode":"live"})
+
+    def test_owner_waiver_cannot_bypass_hardware_checks(self):
+        g=self.gate();g['commissioning']='pending'
+        with patch('controller.load',return_value=g):
+            with self.assertRaises(RuntimeError):cutover_ready(DEFAULTS|{'mode':'live'})
 
 if __name__=="__main__":unittest.main()
