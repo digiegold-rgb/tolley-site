@@ -3,7 +3,7 @@ import { z } from "zod";
 const jsonObject = z.record(z.string().max(100), z.unknown());
 export const plannerEventSchema = z.object({
   id: z.string().uuid(), ts: z.string().datetime({ offset: true }),
-  kind: z.enum(["decision", "learned", "write_attempt", "watchdog", "daily_model", "command_ack", "review_model"]),
+  kind: z.enum(["decision", "learned", "write_attempt", "watchdog", "daily_model", "command_ack", "review_model", "blower_sample"]),
   season: z.enum(["heat", "cool"]), mode: z.enum(["shadow", "live"]),
   period: z.string().max(30).optional(), reason_code: z.string().max(100).optional(),
   why: z.string().max(4000).optional(), inputs: jsonObject.optional(), plan: jsonObject.optional(),
@@ -26,6 +26,18 @@ export const plannerEventSchema = z.object({
   }
   if (e.kind === "decision" && (!e.inputs || !e.plan || !e.devices || !e.why)) {
     ctx.addIssue({ code: "custom", message: "Decision is incomplete" });
+  }
+  if (e.kind === "blower_sample") {
+    const reading = z.object({
+      source: z.literal("furnace_power"), read_only: z.literal(true),
+      watts: z.number().finite().min(0).max(4000).nullable(),
+      valid: z.boolean(), running: z.boolean(), observed_at: z.number().finite(),
+      thresholds_provisional: z.boolean(), on_w: z.number().positive(), off_w: z.number().nonnegative(),
+    }).passthrough().safeParse(e.inputs?.blower);
+    if (!reading.success || (reading.success && (reading.data.off_w >= reading.data.on_w ||
+      (reading.data.valid && reading.data.watts === null) || (!reading.data.valid && reading.data.running)))) {
+      ctx.addIssue({ code: "custom", message: "Blower reading is incomplete or inconsistent" });
+    }
   }
   if (e.kind === "command_ack" && (!e.command_id || !["accepted_shadow", "accepted_live", "rejected"].includes(e.result || ""))) {
     ctx.addIssue({ code: "custom", message: "Command acknowledgment is incomplete" });
