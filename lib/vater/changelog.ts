@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.72';
+export const APP_VERSION = '1.73';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,7 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '1.73', date: '2026-11-26', title: 'Furnace power and blower runtime', items: ['The private Heat dashboard shows furnace watts, inferred blower runtime, and electricity measured since sensor installation.', 'Power history stays available while thermostat automation is paused, with missing readings and provisional calibration clearly labeled.'] },
   { version: '1.72', date: '2026-11-23', title: 'Home heat planner in shadow', items: ['The private Heat dashboard shows proposed warm-up plans, decision history, learning and controller health.', 'Comfort requests are acknowledged by Spark; shadow mode changes proposals without operating thermostats.'] },
   { version: '1.71.1', date: '2026-11-22', title: 'Network consulting for home and business', items: ['Tolley Net offers network planning, Wi-Fi and gaming setup, and small-business infrastructure consulting in the Kansas City metro.', 'Explore assessment deliverables and request a free phone consult with your project needs, timing, and a phone number or email.'] },
   { version: '1.71', date: '2026-11-20', title: 'Home and gaming network setup', items: ['Tolley Net is in-person network setup in Independence and the Kansas City metro, with a free consult and a custom quote.', 'Tell Jared what is wrong with the Wi-Fi, whether you game, and when to talk. The request is saved the same way as a cleanout quote, and he gets the alert.'] },

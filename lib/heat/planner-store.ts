@@ -32,7 +32,7 @@ export async function savePlannerEvents(events: PlannerEvent[]) {
 }
 
 export async function loadPlannerView() {
-  const [latest, decisions, learned, daily, commands, reliability, review] = await Promise.all([
+  const [latest, decisions, learned, daily, commands, reliability, review, blower, blowerHistory] = await Promise.all([
     prisma.heatDecision.findFirst({ where: { kind: "decision" }, orderBy: { ts: "desc" } }),
     prisma.heatDecision.findMany({ where: { kind: { in: ["decision", "write_attempt", "watchdog"] } }, orderBy: { ts: "desc" }, take: 200 }),
     prisma.heatLearned.findMany({ orderBy: { ts: "desc" }, take: 500 }),
@@ -40,6 +40,8 @@ export async function loadPlannerView() {
     prisma.heatCommand.findMany({ orderBy: { createdAt: "desc" }, take: 10 }),
     prisma.heatDecision.findMany({ where: { kind: "watchdog" }, orderBy: { ts: "desc" }, take: 1 }),
     prisma.heatDecision.findFirst({ where: { kind: "review_model" }, orderBy: { ts: "desc" } }),
+    prisma.heatDecision.findFirst({ where: { kind: "blower_sample" }, orderBy: { ts: "desc" } }),
+    prisma.heatDecision.findMany({ where: { kind: "blower_sample", ts: { gte: new Date(Date.now() - 86400_000) } }, orderBy: { ts: "desc" }, take: 1800 }),
   ]);
   const perDay = new Map<string, unknown>();
   for (const row of daily) {
@@ -51,6 +53,7 @@ export async function loadPlannerView() {
     learned, days: [...perDay.values()], commands,
     watchdog: reliability[0]?.payload ?? null,
     review: review?.payload ?? null,
+    blower: blower?.payload ?? null, blowerHistory: blowerHistory.map(r => r.payload),
     generatedAt: new Date().toISOString(),
   };
 }

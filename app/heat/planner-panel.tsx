@@ -11,6 +11,7 @@ type Data = {
   commands: { id: string; action: string; status: string; createdAt: string }[];
   watchdog: PlannerEvent | null;
   review: PlannerEvent | null;
+  blower?: PlannerEvent | null; blowerHistory?: PlannerEvent[];
 };
 const time = (s: string | undefined) => s ? new Date(s).toLocaleString("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—";
 const n = (x: unknown, digits = 1) => typeof x === "number" ? x.toFixed(digits) : "—";
@@ -44,7 +45,7 @@ export function PlannerPanel() {
       setData(await r.json()); setError("");
     } catch (e) { setError(e instanceof Error ? e.message : "Planner connection failed."); }
   }
-  useEffect(() => { void refresh(); const timer = setInterval(refresh, 60_000); return () => clearInterval(timer); }, []);
+  useEffect(() => { void refresh(); const timer = setInterval(refresh, 30_000); return () => clearInterval(timer); }, []);
   async function send(action: string) {
     setBusy(true); setMessage("");
     try {
@@ -58,6 +59,14 @@ export function PlannerPanel() {
   const latest = data?.latest;
   const stale = latest ? Date.now() - Date.parse(latest.ts) > 600_000 : false;
   const sensors = obj(latest?.inputs?.sensors);
+  const blower = obj(data?.blower?.inputs?.blower);
+  const blowerDay = obj(data?.blower?.daily);
+  const blowerStale = !data?.blower || Date.now() - Date.parse(data.blower.ts) > 180_000;
+  const blowerKnown = !blowerStale && blower.valid === true;
+  const blowerToday = blowerDay.date === new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  const blowerPoints = (data?.blowerHistory ?? []).slice().reverse().map(e => ({
+    label: time(e.ts), watts: obj(e.inputs?.blower).valid === true ? obj(e.inputs?.blower).watts : null,
+  }));
   const reasons = [...new Set(data?.decisions.map(d => d.reason_code).filter(Boolean) ?? [])];
   const keys = [...new Set(data?.learned.map(l => `${l.param}|${l.key}`) ?? [])];
   const selected = learning || keys[0];
@@ -89,6 +98,23 @@ export function PlannerPanel() {
         <p className="mt-3 text-sm text-white/55">Forecast assumes the proposed plan runs. Seeded learning rates remain provisional. Furnace stage is unmeasured.</p>
         {Boolean(latest.alerts?.length) && <p className="mt-3 text-amber-200">Alerts: {latest.alerts!.join(", ")}</p>}
       </> : <p className="mt-3 text-white/60">No planner decisions have arrived yet.</p>}
+    </div>
+
+    <div className={box}>
+      <h3 className="text-lg font-semibold">Furnace power &amp; blower runtime</h3>
+      <p className="mt-1 text-sm text-white/65">Read-only power sensor. Furnace power is never switched by this system.</p>
+      {data?.blower ? <>
+        <dl className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+          <div><dt className="text-white/55">Furnace power</dt><dd className="mt-1 text-lg">{blowerKnown ? `${n(blower.watts)} W` : "Unknown"}</dd></div>
+          <div><dt className="text-white/55">Blower inferred from power</dt><dd className="mt-1 text-lg">{blowerKnown ? blower.running ? "Running" : "Idle" : "Unknown"}</dd></div>
+          <div><dt className="text-white/55">Blower today</dt><dd className="mt-1 text-lg">{blowerToday ? n(blowerDay.blower_h, 2) : "—"} h</dd></div>
+          <div><dt className="text-white/55">Furnace electricity today</dt><dd className="mt-1 text-lg">{blowerToday ? n(blowerDay.furnace_kwh, 3) : "—"} kWh</dd></div>
+        </dl>
+        <p className="mt-3 text-sm text-white/65">{time(data.blower.ts)} · {n(blowerDay.observed_h, 2)} hours observed on {String(blowerDay.date ?? "—")}. Runtime starts when this sensor was installed; gaps are excluded.</p>
+        <p className="mt-2 text-sm text-amber-200">Provisional airflow thresholds: ON ≥ {n(blower.on_w, 0)} W; OFF ≤ {n(blower.off_w, 0)} W. Total furnace power includes loads besides the blower. Idle and heat-cycle calibration is in progress.</p>
+        {(!blowerKnown) && <p role="status" className="mt-2 text-amber-200">Power reading unavailable or over three minutes old. Unknown power blocks humidification locally.</p>}
+        <div className="mt-4 h-48"><ResponsiveContainer width="100%" height="100%"><LineChart data={blowerPoints}><CartesianGrid stroke="#ffffff15" /><XAxis dataKey="label" hide /><YAxis width={45} unit=" W" /><Tooltip contentStyle={{ background: "#0f172a", borderColor: "#334155" }} /><Line name="Furnace watts" dataKey="watts" stroke="#a5b4fc" dot={false} connectNulls={false} /></LineChart></ResponsiveContainer></div>
+      </> : <p className="mt-3 text-white/65">Awaiting furnace power readings.</p>}
     </div>
 
     <div className={box}>

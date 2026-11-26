@@ -199,3 +199,28 @@ Snapshot fields:
 Daily row fields: `humid_on_h` (relay-on hours), `humid_cycles`, `humid_kwh`, `humid_cost` (dollars), `humid_water_gal`.
 
 The page prices humidifier runtime at 2 × 90 W (`HUMIDIFIER_UNITS`, `HUMIDIFIER_W_EACH` in `lib/heat/time.ts`: nameplate 120 VAC 0.7 A plus the 24 V solenoid) times `ELECTRIC_USD_PER_KWH`, and uses Spark's `humid_kwh` / `humid_cost` when sent. Today's runtime prefers the live `humid_today_h`, then today's daily row, then the 5-minute snapshots. The humidifier cost is shown on its own "Humidifier power" card and is added to today's energy and to the week and month dollar totals. Apply `prisma/migrations/20261122220000_heat_humidifier` (nullable columns only); the app also adds the columns on first use.
+
+
+### Furnace power observations (November 26, 2026)
+
+`events` batches also accept `kind: "blower_sample"`. Observations use
+`mode: "shadow"` because the independent logger is read-only, even when the HVAC
+planner is live. `inputs.blower` contains source `furnace_power`, `read_only: true`,
+`watts` (nullable 0–4000), `running`, `valid`, `observed_at` (epoch seconds),
+`on_w`, `off_w`, and `thresholds_provisional`. Invalid readings require
+`running: false`; they are not proof that the physical blower stopped.
+`daily` holds Chicago `date`, `blower_h`, `observed_h`, and `furnace_kwh`.
+
+Spark samples every 10 seconds and records every sample locally. Events are
+emitted each minute or state change and uploaded every two minutes. Separate
+outbox persistence allows logging while thermostat control is paused. Gaps over
+30 seconds and invalid intervals do not add runtime. Midnight intervals split
+at the Chicago day boundary. Energy integrates total furnace watts, not just
+blower motor power. Historical runtime before installation is not invented.
+
+The existing private planner API returns `blower` plus up to 1800 observations
+from the last 24 hours as `blowerHistory`. The dashboard treats readings over
+three minutes old as unknown; the local humidity guard uses much tighter timing.
+The existing JSON event store requires no schema migration. No furnace switch
+control is exposed. Power thresholds remain provisional pending idle and heat
+cycle observations (total furnace power can include non-blower loads).
