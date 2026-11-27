@@ -1,4 +1,5 @@
 import { buildLoftFan, emptyLoftFan } from "./fan";
+import { gasFromRuntime } from "./accounting";
 import { buildHumid, emptyHumid, humidTotals } from "./humid";
 import type { FanDayPoint, HeatDay, HeatRows, HeatSnapshot, HeatTotals, HeatView, HumidView } from "./types";
 import {
@@ -60,18 +61,6 @@ function mid(a: number | null, b: number | null): number | null {
   if (a == null) return b;
   if (b == null) return a;
   return (a + b) / 2;
-}
-
-function costPerHour(days: HeatDay[], today: string): { low: number | null; high: number | null } {
-  const recent = days.filter((d) => d.date < today && d.upstairsHeatH + d.downstairsHeatH > 0).slice(-30);
-  const lowDays = recent.filter((d) => d.estCostLow != null);
-  const highDays = recent.filter((d) => d.estCostHigh != null);
-  const lowHours = lowDays.reduce((sum, d) => sum + d.upstairsHeatH + d.downstairsHeatH, 0);
-  const highHours = highDays.reduce((sum, d) => sum + d.upstairsHeatH + d.downstairsHeatH, 0);
-  return {
-    low: lowHours > 0 ? lowDays.reduce((sum, d) => sum + (d.estCostLow ?? 0), 0) / lowHours : null,
-    high: highHours > 0 ? highDays.reduce((sum, d) => sum + (d.estCostHigh ?? 0), 0) / highHours : null,
-  };
 }
 
 function sumPeriod(
@@ -282,9 +271,9 @@ export function buildHeatView(rows: HeatRows, now = new Date()): HeatView {
       downstairsHeatH: round2(reported.downstairsHeatH),
     };
   } else if (snapTotal > 0) {
-    const rate = costPerHour(days, today);
-    const low = rate.low == null ? null : cents(snapTotal * rate.low);
-    const high = rate.high == null ? null : cents(snapTotal * rate.high);
+    const estimate = gasFromRuntime(snapHours.upstairs, snapHours.downstairs);
+    const low = cents(estimate.low);
+    const high = cents(estimate.high);
     todayBlock = {
       date: today,
       costLow: low ?? high,
@@ -321,10 +310,12 @@ export function buildHeatView(rows: HeatRows, now = new Date()): HeatView {
           costHigh: todayBlock.source === "estimated" ? todayBlock.costHigh : null,
         };
 
-  const withCcf = days.filter((d) => d.ccfPerHdd != null && (d.hdd65 == null || d.hdd65 > 0));
+  // Exclude today's partial gas against a whole-day HDD denominator, and weight
+  // by degree-days rather than letting a mild day count as much as a cold day.
+  const withCcf = days.filter((d) => d.date < today && d.ccfPerHdd != null && d.hdd65 != null && d.hdd65 > 0);
   const recent = withCcf.slice(-30);
   const recentAvg = recent.length
-    ? Math.round((recent.reduce((sum, d) => sum + (d.ccfPerHdd ?? 0), 0) / recent.length) * 10000) / 10000
+    ? Math.round((recent.reduce((sum, d) => sum + (d.ccfPerHdd ?? 0) * d.hdd65!, 0) / recent.reduce((sum,d) => sum+d.hdd65!,0)) * 10000) / 10000
     : null;
 
   return {

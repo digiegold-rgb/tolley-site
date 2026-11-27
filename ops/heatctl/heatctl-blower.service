@@ -1,0 +1,15 @@
+[Unit]
+Description=Read-only Furnace power and blower runtime logger
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=simple
+ExecStart=%h/humid/.venv/bin/python %h/heatctl/blower_monitor.py --upload
+WorkingDirectory=%h/heatctl
+Restart=always
+RestartSec=10
+TimeoutStopSec=30
+UMask=0077
+NoNewPrivileges=true
+[Install]
+WantedBy=default.target

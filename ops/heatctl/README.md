@@ -47,12 +47,26 @@ Initial seeds are explicitly provisional: both furnaces 2.1F/h, Nest-only 0F/h.
 
 External raises are preserved through the current period; actor is unknown.
 Initial high setpoints are preserved until a boundary rather than silently reset.
-Humidifier proposals require actual upstairs blower-running telemetry (both
-humidifiers are on its return), heat or <=5-minute post-heat period, and RH below
-the outdoor cap. Stove mode permits fan-only operation but **never requests the
-blower ON solely for humidity**. Stale RH allows at most ten minutes before OFF.
-Unbounded forced humidifier ON is not exposed by the new controller. The existing
-legacy override behavior is unchanged during shadow and must be retired at cutover.
+Humidifiers use fresh Honeywell `fan_running` status (90-second maximum age),
+with the original observation timestamp and successful poll requirement.
+The Shelly at .151 is the separate **Fireplace Blower**, not a furnace meter.
+Missing/stale/stopped blower status or missing RH fails OFF; room-temperature,
+RH and seasonal limits remain. Fan mode ON alone does not prove airflow.
+
+A local asynchronous humidity loop checks every ten seconds independently of
+slow thermostat calls. Only the pinned humidifier relay at .36 receives humidity
+writes. Every ON requires a verified 30-second hardware shutoff lease. Cloud
+observation latency limits stop detection; the lease bounds operation after
+renewals stop, not time since the physical blower stopped.
+
+`heatctl-blower.service` is disabled and its power logger retired. No furnace
+power meter is commissioned. Historical .151 logs/calibration/events and earlier
+power-derived runtime totals belong to the fireplace and must not be interpreted
+as furnace measurements. Current daily reports remove these erroneous furnace
+metrics and label the start of corrected Honeywell blower-only coverage.
+
+Stove `--fan-hold` still requests upstairs blower ON for up to eight hours;
+normal stove mode leaves fan AUTO. Humidification no longer requires stove mode.
 
 ## Commands
 
@@ -61,12 +75,31 @@ legacy override behavior is unchanged during shadow and must be retired at cutov
 - `heatctl status`, `heatctl model`, `heatctl acceptance`.
 - `heatctl warm 71 2h`, `heatctl hold 70 4h`: bounded, expiring room targets.
 - `heatctl auto`, `heatctl away`, `heatctl home`, `heatctl stove 2h`.
+- `heatctl stove 2h --fan-hold`: hold upstairs blower ON; `heatctl stove 0`
+  cancels. Expiry requests AUTO. Away and room-temperature safety override the
+  fan hold. Thermostat freshness, retry backoff and write caps still apply;
+  requested transitions can be delayed by these checks or cloud failures.
+- `heatctl nest-fan on 2h`, `heatctl nest-fan off`: bounded Nest fan timer
+  (up to twelve hours), using Google's Fan.SetTimer command and deadline
+  readback. Nest airflow does not satisfy the upstairs humidifier interlock.
+  The timer expires on the device even if heatctl stops.
 - `heatctl mode shadow`: stop live planning and restart in shadow. This alone does
   not restart legacy services or restore cloud routines; follow rollback below.
 
 Commands are UUID-keyed and expire if not consumed in ten minutes. In shadow they
 only modify proposals. Browser controls use the existing Heat PIN, same-origin
 checks and rate limits. They cannot enable live or exceed target/duration limits.
+These new fan options are CLI commands. While heatctl is paused they only queue;
+they do not start the service or change equipment immediately.
+
+`HONEYWELL_WRITE_FAILURE_2` is recorded at the second consecutive failed actual
+send/readback, including retries. It appears in decision alerts until a fresh
+successful readback/poll confirms the desired state. Pre-send read failures and
+write-cap blocks do not count as failed sends. The threshold event is durable even
+if a later retry succeeds. Events use the existing log/upload/dashboard path;
+this does not add an SMS or email destination. Existing 30-minute fallback and
+write limits remain in force.
+
 `accepted_live` means consumed by the planner, **not** successful equipment action;
 actual write attempts and readbacks are separate events.
 
@@ -163,7 +196,7 @@ safety. Cloud jobs cannot be paused/resumed by a pretend Spark one-liner.
 | 5 Nest | Supplemental high/idle/night rules and satisfaction metrics implemented; actual comfort delivery must be observed. |
 | 6 escalation | Pre-7 AM L3 fixture passes; 10-minute/3-per-hour caps and >5F dual-change restriction prepared. Savings/comfort improvement unproven. |
 | 7 periods | Day/raw/evening/setback implemented; first live 22:00 outcome pending. |
-| 8 humidity | Relay OFF verified, heat/purge/stove policy and fresh airflow recheck active. Physical interlocks unverified; day-long runtime ratio pending. |
+| 8 humidity | Power interlock and 30-second relay lease installed Nov 26; live takeover remains paused. Physical interlocks unverified. |
 | 9 overrides | Expiring CLI/site requests and external-raise holds implemented; observed holds preserved at cutover. |
 | 10 watchdog | Independent unit, durable alerts, single-owner live fallback enabled. No forced live safety-temperature test. |
 | 11 rollout | Owner-approved live learning replaces shadow wait. Actual shadow acceptance remains incomplete; remote pause is owner-confirmed. |
@@ -172,3 +205,50 @@ safety. Cloud jobs cannot be paused/resumed by a pretend Spark one-liner.
 Tests: `python3 -m unittest -v test_heatctl.py` here; website schema tests in
 `lib/heat/planner.test.ts`; authenticated integration/browser test in
 `tests/heat-planner-integration.mjs` (local test DB only).
+
+## Manual controls and uninterrupted reporting (November 26 correction)
+
+Keep the controller running during normal manual operation. Use
+`heatctl manual upstairs-fan` (or `upstairs-temperature`,
+`downstairs-temperature`, `downstairs-fan`, `humidifier`) before an external
+manual writer starts, then `heatctl auto upstairs-fan` after that writer finishes.
+An optional duration such as `2h` releases a claim automatically; omitted duration
+requires explicit scoped release. `heatctl owners` shows explicit claims.
+Unscoped `auto` clears inferred planner holds, not external ownership claims.
+
+A component claim suppresses only that component's fields. A manual fan setting
+leaves both thermostat temperature controls, learning, and uploads running.
+Fresh external thermostat changes in either direction are preserved to the next
+schedule period; external fan ON persists until AUTO/OFF or timer expiry.
+Humidifier-only holds suppress ON, with airflow/RH/safety OFF still enforced.
+The Fireplace Blower has its own nightly OFF action. Airius has its separate owner.
+
+If the main service is deliberately stopped for maintenance, the independent
+`heatctl-telemetry.service` collects read-only observations and uploads them. It
+uses shared locks and yields to the main controller, so there is one cloud poller
+at a time. Its durable upload status is `telemetry-events/upload-status.json`.
+It never starts automatic controls or consumes queued commands. The dashboard
+labels these observations REPORTING_ONLY / shadow. See OPERATIONS.md for current
+manual ownership and actual deployment evidence, rather than old pause notes.
+
+## Nightly stove/fire cutoff
+
+The owner's nightly **1:00 AM America/Chicago** rule supersedes indefinite
+upstairs-fan/humidifier holds. Their claims expire at the next 1 AM; other manual
+components are unaffected. Stove requests cannot extend beyond that boundary.
+At cutoff, the controller requests Honeywell fan AUTO and restores automatic
+blower-based humidification with all existing airflow/RH/lease safety checks.
+No fire-out inference is used. AUTO allows normal furnace heat/purge blower runs.
+
+`heatctl-fire-cutoff.timer` is persistent and wakes the same controller; calendar
+catch-up also runs after restarts. Honeywell writes stay with the controller.
+The timer also sends identity-pinned `Switch.Set {"id":0,"on":false}` to the
+Fireplace Blower at .151 and verifies OFF. Controller catch-up retries failures
+at most once per minute; a shared lock and durable completion prevent duplicate
+actions for the same cutoff. See `fireplace-cutoff-status.json`. The first
+fireplace action is November 28, 2026, 01:00 CST.
+Inspect `fire-policy.json`, `fire-cutoff-request.json`, `fire-cutoff-status.json`,
+and normal decision/upload logs. Fan AUTO is only marked complete after fresh
+readback. Honeywell outages, ongoing reads, and existing write caps/backoff can
+delay physical switching; pending cutoff alerts remain visible. The humidifier's
+ownership expires independently of those cloud calls.

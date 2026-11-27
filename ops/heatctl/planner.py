@@ -4,6 +4,8 @@ import copy
 from datetime import datetime, timedelta
 from common import TZ, stamp
 from model import band, rate, combo
+from humidity import decide as humidity_decide
+import ownership
 
 
 def at(dt, text):
@@ -64,6 +66,8 @@ def decide(obs, weather, model, state, override, cfg, now):
     if active.get("type") in ("warm","hold") and housemode!="away": period="day" if dt<evening else "evening"
     # Period identity handles night rollover and manual holds expiring at boundaries.
     period_id = dt.date().isoformat()+":"+period
+    control_holds,component_changes=ownership.detect(state,obs,period_id,now)
+    control_holds={**control_holds,**state.get("external_owners",{})}
     holds = dict(state.get("manual_holds",{})) if state.get("period_id")==period_id else {}
     changes=[]
     for name,current in obs["thermostats"].items():
@@ -109,20 +113,17 @@ def decide(obs, weather, model, state, override, cfg, now):
     cap=rh_target(weather.get("outdoor_f"));rh=obs["sensors"].get("living_rh")
     if rh is None:rh=obs["sensors"].get("loft_rh")
     heating=any(t.get("calling") is True for t in obs["thermostats"].values())
-    up_running=obs["thermostats"]["honeywell"].get("fan_running") is True and obs["thermostats"]["honeywell"]["fresh"]
     last_heat=now if heating else state.get("last_heat",0)
-    purge=0<=now-last_heat<=300
     stove=bool(state.get("stove_until",0)>now)
-    held=state.get("rh_held",False)
-    if rh is not None:
-        if rh>=cap:held=True
-        elif rh<=cap-cfg["rh_hysteresis"]:held=False
-    stale_since=now if rh is not None else state.get("stale_rh_since",now)
-    rh_ok=not held if rh is not None else now-stale_since<cfg["stale_rh_max_on_s"]
-    humid=bool(up_running and (heating or purge or stove) and rh_ok and period!="away")
-    humid_reason="heat/purge with verified upstairs blower" if heating or purge else "stove" if stove else "fan-only humidification disabled"
-    if not up_running: humid_reason="upstairs airflow not confirmed"
-    if not rh_ok: humid_reason="humidity target or stale-runtime limit"
+    stove_fan=stove and state.get("stove_fan_hold") is True and period!="away"
+    if stove_fan:up["fan"]="on"
+    if "nest_fan_until" in state:
+        fan_until=state["nest_fan_until"]
+        nest["fan_timer"]="ON" if fan_until>now and period!="away" else "OFF"
+        if nest["fan_timer"]=="ON":nest["fan_until"]=fan_until
+    humidity=humidity_decide(obs,obs.get("blower",{}),weather.get("outdoor_f"),cfg,state.get("rh_held",False),now)
+    held=humidity["rh_held"];stale_since=now if rh is not None else state.get("stale_rh_since",now)
+    humid=humidity["after"];humid_reason=humidity["why"]
     gap=loft-living if loft is not None and living is not None else None
     loft_on=bool(gap is not None and (gap>=3 or (gap>1.5 and obs.get("loft_fan") is True)))
     if cfg["loft_quiet_hours"] and period in ("night","setback"):loft_on=False
@@ -133,19 +134,30 @@ def decide(obs, weather, model, state, override, cfg, now):
     if fallback and now-fallback>=1800:alarms.append("HONEYWELL_WRITE_FAILURE_30M")
     if period=="setback" and now-night.timestamp()>=900:
         current=obs["thermostats"]["honeywell"]
-        if current.get("heat_sp")!=night_sp or current.get("fan")!="auto":alarms.append("SETBACK_NOT_CONFIRMED_15M")
+        if (("upstairs-temperature" not in control_holds and current.get("heat_sp")!=night_sp)
+                or ("upstairs-fan" not in control_holds and current.get("fan")!=up["fan"])):
+            alarms.append("SETBACK_NOT_CONFIRMED_15M")
     safety=living is not None and (living<55 or living>80)
     if safety:
         up={"heat_sp":60,"mode":"heat","fan":"auto"};nest={"mode":"OFF"} if living>80 else nest
+        if "nest_fan_until" in state:nest.update(fan_timer="OFF");nest.pop("fan_until",None)
         humid=False;alarms.append("ROOM_TEMPERATURE_SAFETY")
     if living is None:up={};nest={};humid=False
+    # A manual fan claim does not suppress heat settings on the same thermostat.
+    # Explicit external ownership also applies during watchdog/safety requests.
+    if not safety:
+        up=ownership.filter_desired("honeywell",up,control_holds)
+        nest=ownership.filter_desired("nest",nest,control_holds)
+    else:
+        up=ownership.filter_desired("honeywell",up,state.get("external_owners",{}))
+        nest=ownership.filter_desired("nest",nest,state.get("external_owners",{}))
     devices={}
     for name,after in (("honeywell",up),("nest",nest)):
         before=obs["thermostats"][name]
         # No thermostat writes at all from stale data; independent watchdog can recover later.
         devices[name]={"before":before,"after":after if before["fresh"] else {},
             "write":"shadow" if cfg["mode"]=="shadow" else "pending", "attempts":0,"readback_ok":None,"error":None}
-    devices.update(blower={"before":obs["thermostats"]["honeywell"].get("fan"),"after":"auto"},
+    devices.update(blower={"before":obs["thermostats"]["honeywell"].get("fan"),"after":devices["honeywell"]["after"].get("fan")},
                    humidifier={"before":obs.get("humidifier"),"after":humid,"why":humid_reason},
                    loft_fan={"observed":obs.get("loft_fan"),"after":loft_on,"owner":"loftfan.service"})
     projected=None
@@ -153,25 +165,30 @@ def decide(obs, weather, model, state, override, cfg, now):
         cool_hours=max(0,min(hours,(start.timestamp()-reference)/3600))
         projected=round(projected_start_f-cool_hours*cool_rate+max(0,hours-cool_hours)*warm_rate,2)
     code="ROOM_TEMPERATURE_SAFETY" if safety else "INPUTS_UNAVAILABLE" if living is None else period.upper()+"_L"+str(level)
-    def describe(after):
-        if not after:return "no change while readings are unavailable"
+    def describe(after,name):
+        if not after:
+            if any(ownership.SCOPES[s][0]==name for s in control_holds):return "manual control; current settings preserved"
+            return "no change while readings are unavailable"
         if str(after.get("mode","")).lower()=="off":return "off"
         return str(after["heat_sp"])+"°F" if "heat_sp" in after else "keep the current setpoint"
     why=(f"Living room {living}°F against a {target}°F {period} target. "
-         f"Proposed upstairs setting: {describe(devices['honeywell']['after'])}; "
-         f"Nest: {describe(devices['nest']['after'])}. Humidity: {humid_reason}.")
+         f"Proposed upstairs setting: {describe(devices['honeywell']['after'],'honeywell')}; "
+         f"Nest: {describe(devices['nest']['after'],'nest')}. Humidity: {humid_reason}.")
     if holds:why+=" Preserving previously raised setpoints until the next period; their source is unknown."
+    if control_holds:why+=" Manual control: "+", ".join(control_holds)+". Other components remain automatic."
     result={"kind":"decision","mode":cfg["mode"],"season":cfg["hvac_season"],"period":period,
         "housemode":housemode,"occupancy":None,"override":active or {"type":"none"},
-        "inputs":{"sensors":obs["sensors"],"weather":weather,"learned":{"warmup_rate_both_fph":warm_rate,
+        "inputs":{"sensors":obs["sensors"],"blower":obs.get("blower",{}),"weather":weather,"learned":{"warmup_rate_both_fph":warm_rate,
             "cool_rate_fph":cool_rate,"model_version":model.get("version",0),
             "seeded":not bool(model.get("rates",{}).get("warmup_rate|both|"+wb)),
             "warmup_sample_n":model.get("rates",{}).get("warmup_rate|both|"+wb,{}).get("n",0)}},
         "plan":{"target_f":target,"wake":wake.isoformat(),"warmup_start":start.isoformat() if start else None,
             "wake_target_f":wake_target,"predicted_wake_f":projected,"escalation_level":level,"eta_min":eta,"rh_target":cap,
             "projection_start":stamp(reference),"projection_start_f":projected_start_f},
-        "devices":devices,"reason_code":code,"why":why,"alerts":alarms,"manual_changes":changes,
+        "devices":devices,"reason_code":code,"why":why,"alerts":alarms,"manual_changes":changes+component_changes,
         "safety":safety,"stage":"unknown"}
+    result["plan"].update(stove_until=state.get("stove_until"),stove_fan_hold=bool(stove_fan),nest_fan_until=state.get("nest_fan_until"))
+    result["plan"]["manual_components"]=control_holds
     if cfg["hvac_season"]=="cool":
         for name in ("honeywell","nest"):result["devices"][name]["after"]={}
         result["devices"]["humidifier"]["after"]=False

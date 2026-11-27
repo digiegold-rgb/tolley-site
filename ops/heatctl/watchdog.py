@@ -5,6 +5,7 @@ import fcntl
 from common import ROOT,config,load,atomic,fresh,stamp
 from observations import read
 from journal import Journal
+import ownership
 
 
 async def recover(cfg,alerts):
@@ -22,11 +23,16 @@ async def recover(cfg,alerts):
             await backend.poll()
             before=await backend.read_device("honeywell")
             if not before.get("fresh"):return "safe_write_blocked_no_fresh_read"
-            await backend.write_device("honeywell",{"heat_sp":60,"mode":"heat","fan":"auto"})
+            protected=ownership.active()
+            if "ROOM_TEMPERATURE_SAFETY" not in alerts:
+                protected={**(load(ROOT/"state.json",{}) or {}).get("control_holds",{}),**protected}
+            desired=ownership.filter_desired("honeywell",{"heat_sp":60,"mode":"heat","fan":"auto"},protected)
+            if desired:await backend.write_device("honeywell",desired)
             await asyncio.sleep(20)
             after=await backend.read_device("honeywell")
-            if abs(after.get("heat_sp",-999)-60)>0.4 or after.get("fan")!="auto":return "safe_readback_failed"
-            await backend.humidifier(False)
+            from actuator import changed
+            if changed(after,desired):return "safe_readback_failed"
+            if "humidifier" not in ownership.active() or "ROOM_TEMPERATURE_SAFETY" in alerts:await backend.humidifier(False)
             return "safe_state_verified"
         finally:await backend.close()
 

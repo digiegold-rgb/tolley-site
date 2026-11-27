@@ -50,7 +50,7 @@ export async function loadPlannerView() {
   }
   return {
     latest: latest?.payload ?? null, decisions: decisions.map(r => r.payload),
-    learned, days: [...perDay.values()], commands,
+    learned, days: [...perDay.values()].sort((a,b) => String((b as {date:string}).date).localeCompare(String((a as {date:string}).date))), commands,
     watchdog: reliability[0]?.payload ?? null,
     review: review?.payload ?? null,
     blower: blower?.payload ?? null, blowerHistory: blowerHistory.map(r => r.payload),

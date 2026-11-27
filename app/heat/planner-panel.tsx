@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { furnaceBlowerStatus } from "@/lib/heat/accounting";
 import type { PlannerEvent } from "@/lib/heat/planner-schema";
 
 type Learned = { id: string; ts: string; param: string; key: string; value: number; n: number; season: string };
@@ -59,14 +60,13 @@ export function PlannerPanel() {
   const latest = data?.latest;
   const stale = latest ? Date.now() - Date.parse(latest.ts) > 600_000 : false;
   const sensors = obj(latest?.inputs?.sensors);
-  const blower = obj(data?.blower?.inputs?.blower);
-  const blowerDay = obj(data?.blower?.daily);
-  const blowerStale = !data?.blower || Date.now() - Date.parse(data.blower.ts) > 180_000;
-  const blowerKnown = !blowerStale && blower.valid === true;
-  const blowerToday = blowerDay.date === new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-  const blowerPoints = (data?.blowerHistory ?? []).slice().reverse().map(e => ({
-    label: time(e.ts), watts: obj(e.inputs?.blower).valid === true ? obj(e.inputs?.blower).watts : null,
-  }));
+  const blower = obj(latest?.inputs?.blower);
+  const blowerStatus = furnaceBlowerStatus(blower);
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  const savings = obj(data?.days.find(d => d.date === today)?.savings);
+  const costs = obj(savings.costs);
+  const supplement = obj(savings.supplement);
+  const learned = obj(latest?.inputs?.learned);
   const reasons = [...new Set(data?.decisions.map(d => d.reason_code).filter(Boolean) ?? [])];
   const keys = [...new Set(data?.learned.map(l => `${l.param}|${l.key}`) ?? [])];
   const selected = learning || keys[0];
@@ -95,26 +95,32 @@ export function PlannerPanel() {
           <div><dt className="text-white/55">Override</dt><dd>{String(latest.override?.type ?? "none")}</dd></div>
           <div><dt className="text-white/55">Reported</dt><dd>{time(latest.ts)}</dd></div>
         </dl>
-        <p className="mt-3 text-sm text-white/55">Forecast assumes the proposed plan runs. Seeded learning rates remain provisional. Furnace stage is unmeasured.</p>
+        <p className="mt-3 text-sm text-white/55">Forecast assumes the proposed plan runs. Furnace stage is unmeasured. Recovery model has {n(learned.warmup_sample_n, 0)} comparable windows; a small sample does not establish prediction accuracy or the cheapest heating strategy.</p>
         {Boolean(latest.alerts?.length) && <p className="mt-3 text-amber-200">Alerts: {latest.alerts!.join(", ")}</p>}
       </> : <p className="mt-3 text-white/60">No planner decisions have arrived yet.</p>}
     </div>
 
     <div className={box}>
-      <h3 className="text-lg font-semibold">Furnace power &amp; blower runtime</h3>
-      <p className="mt-1 text-sm text-white/65">Read-only power sensor. Furnace power is never switched by this system.</p>
-      {data?.blower ? <>
-        <dl className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
-          <div><dt className="text-white/55">Furnace power</dt><dd className="mt-1 text-lg">{blowerKnown ? `${n(blower.watts)} W` : "Unknown"}</dd></div>
-          <div><dt className="text-white/55">Blower inferred from power</dt><dd className="mt-1 text-lg">{blowerKnown ? blower.running ? "Running" : "Idle" : "Unknown"}</dd></div>
-          <div><dt className="text-white/55">Blower today</dt><dd className="mt-1 text-lg">{blowerToday ? n(blowerDay.blower_h, 2) : "—"} h</dd></div>
-          <div><dt className="text-white/55">Furnace electricity today</dt><dd className="mt-1 text-lg">{blowerToday ? n(blowerDay.furnace_kwh, 3) : "—"} kWh</dd></div>
+      <h3 className="text-lg font-semibold">Furnace blower status</h3>
+      <p className="mt-2 text-2xl">{blowerStatus}</p>
+      <p className="mt-2 text-sm text-white/65">Honeywell reports actual fan-running status. Missing, stopped or older-than-90-second observations block automatic humidification. Furnace electricity is unmeasured.</p>
+      <p className="mt-3 text-sm text-amber-200">Device correction: the former power readings belong to the separate Fireplace Blower. They are excluded from furnace runtime and energy accounting. Its nightly cutoff is 1 AM Central.</p>
+    </div>
+
+    <div className={box}>
+      <h3 className="text-lg font-semibold">Savings with comfort</h3>
+      <p className="mt-2 text-sm text-white/70">Keep the occupied-room target, then compare total heating cost and time below that target. Lower runtime in one furnace alone does not prove whole-house savings.</p>
+      {Object.keys(costs).length ? <>
+        <dl className="mt-4 grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
+          <div><dt className="text-white/55">Upstairs gas today</dt><dd className="mt-1 text-lg">${n(costs.upstairs_gas_usd_low,2)}–${n(costs.upstairs_gas_usd_high,2)}</dd></div>
+          <div><dt className="text-white/55">Basement gas today</dt><dd className="mt-1 text-lg">${n(costs.nest_gas_usd,2)}</dd></div>
+          <div><dt className="text-white/55">Below occupied target</dt><dd className="mt-1 text-lg">{n(savings.below_target_min,0)} min / {n(savings.comfort_observed_min,0)} observed</dd></div>
         </dl>
-        <p className="mt-3 text-sm text-white/65">{time(data.blower.ts)} · {n(blowerDay.observed_h, 2)} hours observed on {String(blowerDay.date ?? "—")}. Runtime starts when this sensor was installed; gaps are excluded.</p>
-        <p className="mt-2 text-sm text-amber-200">Provisional airflow thresholds: ON ≥ {n(blower.on_w, 0)} W; OFF ≤ {n(blower.off_w, 0)} W. Total furnace power includes loads besides the blower. Idle and heat-cycle calibration is in progress.</p>
-        {(!blowerKnown) && <p role="status" className="mt-2 text-amber-200">Power reading unavailable or over three minutes old. Unknown power blocks humidification locally.</p>}
-        <div className="mt-4 h-48"><ResponsiveContainer width="100%" height="100%"><LineChart data={blowerPoints}><CartesianGrid stroke="#ffffff15" /><XAxis dataKey="label" hide /><YAxis width={45} unit=" W" /><Tooltip contentStyle={{ background: "#0f172a", borderColor: "#334155" }} /><Line name="Furnace watts" dataKey="watts" stroke="#a5b4fc" dot={false} connectNulls={false} /></LineChart></ResponsiveContainer></div>
-      </> : <p className="mt-3 text-white/65">Awaiting furnace power readings.</p>}
+        <p className="mt-3 text-sm text-white/65">Gas assumptions: ${n(costs.gas_usd_per_ccf,2)}/CCF; upstairs ${n(costs.upstairs_usd_per_h_low,2)}–${n(costs.upstairs_usd_per_h_high,2)} per burner-hour; basement ${n(costs.nest_usd_per_h,2)} per burner-hour. These are runtime estimates, not measured bills.</p>
+        <p className="mt-3 text-sm">Basement boost {n(supplement.boost_f,0)}°F / idle {n(supplement.idle_f,0)}°F is a fixed policy. One basement burner-hour must displace about {n(costs.basement_break_even_upstairs_min_low,0)}–{n(costs.basement_break_even_upstairs_min_high,0)} upstairs burner-minutes to break even on estimated gas alone. That displacement has not been demonstrated.</p>
+        <p className="mt-3 text-sm text-white/65">Still needed for a complete savings comparison:</p>
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-white/65">{Array.isArray(costs.missing) && costs.missing.map(x => <li key={String(x)}>{String(x)}</li>)}</ul>
+      </> : <p className="mt-3 text-sm text-white/65">Awaiting corrected cost and comfort accounting. No maximum-savings claim can be made from the existing data.</p>}
     </div>
 
     <div className={box}>
@@ -155,8 +161,18 @@ export function PlannerPanel() {
 
     <div className={box}>
       <h3 className="text-lg font-semibold">Morning and cost review</h3>
-      <p className="mt-1 text-sm text-white/55">Planner observation window only; gas, humidifier electricity and water are estimates. Existing daily energy totals remain above.</p>
-      {data?.days.map(d => <article key={String(d.date)} className="mt-3 border-t border-white/10 pt-3 text-sm"><h4 className="font-semibold">{String(d.date)} · {String(d.season)} · {n(d.coverage_h)} hours observed</h4><p className="mt-1">Wake: {n(d.wake_actual_f)}° actual / {n(d.wake_prediction_f)}° predicted. Below target after wake: {n(d.below_target_min, 0)} minutes.</p><p>Estimated gas ${n(d.gas_usd_low, 2)}–${n(d.gas_usd_high, 2)} · humidifiers ${n(d.humid_usd, 2)} · water {n(d.humid_water_gal)} gal ({d.humid_water_usd == null ? "rate not configured" : `$${n(d.humid_water_usd, 2)}`}).</p><p>Blower only: {n(d.blower_only_h)} h · Nest heat below target: {n(d.nest_runtime_below_target_h)} h.</p></article>)}
+      <p className="mt-1 text-sm text-white/55">Observation windows only; compare similar weather, starting temperatures, occupancy and fire use. Figures below overlap the dashboard totals and must not be added to them.</p>
+      {data?.days.map(d => {
+        const audit=obj(d.savings), morning=obj(audit.morning);
+        return <article key={String(d.date)} className="mt-3 border-t border-white/10 pt-3 text-sm">
+          <h4 className="font-semibold">{String(d.date)} · {String(d.season)} · {n(d.coverage_h)} hours observed</h4>
+          <p className="mt-2">Wake: {n(audit.wake_actual_f ?? d.wake_actual_f)}° actual / {n(audit.wake_target_f)}° target. {audit.prediction_at ? <>First warm-up prediction: {n(audit.prediction_f)}° at {time(String(audit.prediction_at))} ({n(audit.prediction_lead_min,0)} min ahead).</> : <>No frozen advance forecast; the old rolling prediction is not an accuracy score.</>}</p>
+          <p className="mt-1">Below occupied target: {n(audit.below_target_min,0)} minutes in {n(audit.comfort_observed_min,0)} observed minutes. Temperature shortfall: {n(audit.shortfall_degree_h,2)} degree-hours.</p>
+          <p className="mt-1">Estimated gas ${n(d.gas_usd_low,2)}–${n(d.gas_usd_high,2)} · humidifiers ${n(d.humid_usd,2)} · water {n(d.humid_water_gal)} gal ({d.humid_water_usd == null ? "water/sewer price missing" : `$${n(d.humid_water_usd,2)}`}).</p>
+          {Object.keys(morning).length>0 && <p className="mt-2">Morning {time(String(morning.start))}–{time(String(morning.end))}: {n(morning.observed_h,2)} h observed; upstairs heat {n(morning.upstairs_h,2)} h, basement {n(morning.nest_h,2)} h. Gas ${n(morning.gas_usd_low,2)}–${n(morning.gas_usd_high,2)}; basement portion ${n(morning.nest_gas_usd,2)}. Basement temperature {n(morning.basement_min_f)}–{n(morning.basement_max_f)}°.</p>}
+          {d.blower_source === "honeywell_fan_status" && <p className="mt-1 text-white/55">Furnace fan-only coverage begins {time(String(d.blower_coverage_since))}; earlier fireplace power is excluded.</p>}
+        </article>;
+      })}
       <p className="mt-3 text-sm text-white/60">Watchdog: {data?.watchdog ? `${time(data.watchdog.ts)} · ${data.watchdog.alerts?.length ? data.watchdog.alerts.join(", ") : "no alerts"}` : "awaiting independent check"}</p>
       {data?.review?.text && <details className="mt-3"><summary className="cursor-pointer text-sm">Latest automatic review · {data.review.date}</summary><pre className="mt-2 whitespace-pre-wrap font-sans text-sm leading-relaxed text-white/70">{data.review.text}</pre></details>}
     </div>

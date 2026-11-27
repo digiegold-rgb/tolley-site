@@ -1,0 +1,15 @@
+[Unit]
+Description=Independent read-only heat reporting while controller is stopped
+After=network-online.target house-sensors.service
+Wants=network-online.target
+[Service]
+Type=simple
+ExecStart=%h/humid/.venv/bin/python %h/heatctl/telemetry.py
+WorkingDirectory=%h/heatctl
+Restart=always
+RestartSec=10
+TimeoutStopSec=120
+UMask=0077
+NoNewPrivileges=true
+[Install]
+WantedBy=default.target

@@ -82,12 +82,12 @@ function TotalCard({ totals }: { totals: HeatTotals }) {
 
 function baselineSentence(ccf: HeatView["ccf"]): string {
   if (ccf.recentAvg == null || ccf.versusBaseline == null) {
-    return "Baseline is 0.11 CCF per heating degree-day. Daily rows will place this house against it.";
+    return "Reference is 0.11 CCF per heating degree-day; it is not a verified baseline for this house.";
   }
   const pct = Math.abs(ccf.versusBaseline) * 100;
-  if (pct < 0.5) return "Recent average matches the 0.11 baseline.";
+  if (pct < 0.5) return "Recorded prior days match the 0.11 reference; this does not establish savings.";
   const dir = ccf.versusBaseline < 0 ? "under" : "over";
-  return `Recent average is ${pct.toFixed(0)}% ${dir} the 0.11 baseline.`;
+  return `Degree-day weighted average is ${pct.toFixed(0)}% ${dir} the 0.11 reference. Today is excluded; historical coverage varies. This is not a measured savings comparison.`;
 }
 
 function fanEnergyNote(source: FanEnergySource, nameplateW: number): string {
@@ -201,9 +201,10 @@ export function HeatDashboard({ initial, unavailable = false }: { initial: HeatV
       <PlannerPanel />
 
       <section className="mt-3 rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.03] p-4">
-        <h2 className="text-sm text-white/55">{includeFan || includeHumid ? "Today’s energy" : "Today’s gas"}</h2>
+        <h2 className="text-sm text-white/55">{includeFan || includeHumid ? "Estimated gas + tracked electricity" : "Estimated gas today"}</h2>
         <p className="mt-1 font-mono text-4xl tracking-tight">{formatCostRange(view.today.energyCostLow, view.today.energyCostHigh)}</p>
         <p className="mt-1 text-sm text-white/60">{todayDetail}</p>
+        <p className="mt-2 text-sm text-white/55">Partial cost estimate. Furnace electricity, fireplace/wood and water/sewer costs are not included. Gas uses burner runtime and assumed input ratings; actual stage and utility usage are unmeasured.</p>
       </section>
 
       <section className="mt-6">
