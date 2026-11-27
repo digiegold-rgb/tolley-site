@@ -110,7 +110,7 @@ describe("heat hours", () => {
 });
 
 describe("heat view", () => {
-  it("estimates today from recent cost per heat-hour and prefers a reported row", () => {
+  it("estimates today from separate furnace input ratings and prefers a reported row", () => {
     const shots: HeatSnapshot[] = [];
     for (let i = 0; i <= 6; i++) {
       shots.push(snap(new Date(Date.parse("2026-11-18T15:00:00.000Z") + i * 10 * 60 * 1000).toISOString(), "heat"));
@@ -127,11 +127,11 @@ describe("heat view", () => {
     assert.equal(estimated.today.source, "estimated");
     assert.equal(estimated.today.upstairsHeatH, 1);
     assert.equal(estimated.today.costLow, 1);
-    assert.equal(estimated.today.costHigh, 2);
+    assert.equal(estimated.today.costHigh, 1.42);
     assert.equal(estimated.week.upstairsHeatH, 5);
     assert.equal(estimated.week.downstairsHeatH, 2);
     assert.equal(estimated.week.costLow, 7);
-    assert.equal(estimated.week.costHigh, 14);
+    assert.equal(estimated.week.costHigh, 13.42);
 
     const reported = buildHeatView(
       {
@@ -148,8 +148,8 @@ describe("heat view", () => {
     assert.equal(reported.today.source, "reported");
     assert.equal(reported.today.costLow, 3);
     assert.equal(reported.today.costHigh, 5);
-    assert.equal(reported.ccf.recentAvg, 0.11);
-    assert.equal(reported.ccf.versusBaseline, 0);
+    assert.equal(reported.ccf.recentAvg, 0.1);
+    assert.ok((reported.ccf.versusBaseline ?? 0) < 0);
     assert.equal(formatCostRange(4.2, 4.22), formatCostRange(4.2, 4.2));
     assert.match(formatCostRange(4, 6), /\$4\.00–\$6\.00/);
     assert.equal(formatCostRange(null, null), "—");
@@ -346,11 +346,11 @@ describe("loft fan", () => {
     assert.equal(view.fan.today.cost, 0.12);
     assert.equal(view.fan.today.source, "meter");
     assert.equal(view.today.costLow, 1);
-    assert.equal(view.today.costHigh, 2);
+    assert.equal(view.today.costHigh, 1.42);
     assert.equal(view.today.energyCostLow, 1.12);
-    assert.equal(view.today.energyCostHigh, 2.12);
+    assert.equal(view.today.energyCostHigh, 1.54);
     assert.equal(view.week.costLow, 7.12);
-    assert.equal(view.week.costHigh, 14.12);
+    assert.equal(view.week.costHigh, 13.54);
     assert.equal(view.week.fanCost, 0.12);
     assert.equal(view.week.fanKwh, 1);
     assert.equal(view.month.fanCost, 0.12);

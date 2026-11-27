@@ -1,6 +1,7 @@
 """Shadow reads existing telemetry only: no TCC logins, SDM calls or token access."""
 from pathlib import Path
 from common import load, number, epoch, fresh
+from blower import from_thermostat
 
 
 def read(now, cfg, home=None):
@@ -26,12 +27,18 @@ def read(now, cfg, home=None):
             calling = str(hs.get(hvac_key, "")).lower() in ("heat", "heating", "auxheat")
         result["thermostats"][name] = {"heat_sp": number(t.get("setpoint_f")),
             "mode": t.get("mode"), "fan": t.get("fan_mode"), "fan_running": t.get("fan_running"),
+            "fan_timer":t.get("fan_timer"),"fan_until":number(t.get("fan_until")),
             "ambient_f": number(t.get("ambient_f")), "calling": calling, "fresh": valid,
             "age_s": round(now-t["t"]) if number(t.get("t")) is not None else None,
             "observed_at": t.get("t"), "stage": "unknown"}
+    up=result["thermostats"]["honeywell"]
+    result["blower"]=from_thermostat({**up,"fresh":up["fresh"] and hs.get("honeywell_ok") is True},now)
     if fresh(epoch(hs.get("ts")), now, 180):
         result["humidifier"] = hs.get("relay_on")
         result["outdoor_fallback"] = number(hs.get("outdoor_f"))
+    fast=load(home / "heatctl/humidity-fast.json",{}) or {}
+    if fresh(fast.get("observed_at"),now,20):
+        result["humidifier"]=fast.get("observed") if fast.get("readback_ok") or fast.get("write")=="manual" else None
     if fresh(lf.get("epoch"), now, 180):
         result["loft_fan"] = lf.get("observed_on")
         result["loft_watts"] = number(lf.get("watts"))

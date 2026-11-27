@@ -1,0 +1,9 @@
+[Unit]
+Description=Nightly 1 AM America/Chicago stove/fire cutoff
+[Timer]
+OnCalendar=*-*-* 01:00:00 America/Chicago
+AccuracySec=1s
+RandomizedDelaySec=0
+Persistent=true
+[Install]
+WantedBy=timers.target

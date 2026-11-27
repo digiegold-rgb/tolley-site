@@ -1,0 +1,9 @@
+[Unit]
+Description=End stove/fire fan holds at 1 AM Central
+[Service]
+Type=oneshot
+ExecStart=%h/humid/.venv/bin/python %h/heatctl/fire_cutoff.py
+WorkingDirectory=%h/heatctl
+TimeoutStartSec=210
+UMask=0077
+NoNewPrivileges=true

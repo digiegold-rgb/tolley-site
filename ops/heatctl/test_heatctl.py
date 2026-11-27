@@ -4,7 +4,7 @@ import json
 import tempfile
 import io
 import unittest
-from datetime import datetime
+from datetime import datetime,timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock,Mock,patch
 from common import DEFAULTS,TZ
@@ -22,7 +22,8 @@ def fixture(temp=62.1):
         "living_f_ts":timestamp(),"living_rh_ts":timestamp()},
         "thermostats":{n:{"heat_sp":sp,"mode":"heat","fan":"auto","fan_running":True,
             "fresh":True,"calling":True,"age_s":0} for n,sp in (("honeywell",68),("nest",70))},
-        "humidifier":False,"loft_fan":False,"loft_watts":0}
+        "humidifier":False,"loft_fan":False,"loft_watts":0,
+        "blower":{"device_id":"honeywell","source":"honeywell_fan_status","valid":True,"running":True,"watts":25.8,"observed_at":timestamp()}}
     w={"outdoor_f":28,"feels_f":20,"wind_mph":10,"gust_mph":15,"cloud_pct":60,
        "precip_mm":0,"shortwave_wm2":0,"forecast_low_f":25,"fresh":True,"hours":[]}
     return obs,w
@@ -30,6 +31,7 @@ def fixture(temp=62.1):
 
 def decision(temp=62.1,t=None,state=None,override=None,cfg=None):
     o,w=fixture(temp)
+    o["blower"]["observed_at"]=t or timestamp()
     return planner.decide(o,w,{},state if state is not None else {},override or {},cfg or dict(DEFAULTS),t or timestamp())
 
 
@@ -67,7 +69,8 @@ class PlannerTests(unittest.TestCase):
         planner.decide(o,w,{},s,{},DEFAULTS,t)
         o["thermostats"]["honeywell"]["heat_sp"]=73
         d=planner.decide(o,w,{},s,{},DEFAULTS,t+60)
-        self.assertEqual(d["devices"]["honeywell"]["after"]["heat_sp"],73)
+        self.assertEqual(d["devices"]["honeywell"]["before"]["heat_sp"],73)
+        self.assertNotIn("heat_sp",d["devices"]["honeywell"]["after"])
         d=planner.decide(o,w,{},s,{},DEFAULTS,timestamp("2026-11-23T22:00:00"))
         self.assertEqual(d["devices"]["honeywell"]["after"]["heat_sp"],58)
 
@@ -81,16 +84,14 @@ class PlannerTests(unittest.TestCase):
         d=planner.decide(o,w,{}, {},{},DEFAULTS,timestamp())
         self.assertEqual(d["devices"]["nest"]["after"],{})
 
-    def test_fan_only_humidification_off(self):
+    def test_fan_only_humidification_allowed_from_power(self):
         o,w=fixture()
-        for x in o["thermostats"].values():x["calling"]=False
+        for x in o["thermostats"].values():x.update(calling=False,fan_running=False,fresh=False)
         d=planner.decide(o,w,{}, {},{},DEFAULTS,timestamp())
-        self.assertFalse(d["devices"]["humidifier"]["after"])
-        d=planner.decide(o,w,{}, {"stove_until":timestamp()+60},{},DEFAULTS,timestamp())
         self.assertTrue(d["devices"]["humidifier"]["after"])
 
-    def test_humidifier_requires_upstairs_airflow(self):
-        o,w=fixture();o["thermostats"]["honeywell"]["fan_running"]=False
+    def test_humidifier_requires_furnace_power_even_when_cloud_says_running(self):
+        o,w=fixture();o["blower"].update(running=False,watts=5)
         d=planner.decide(o,w,{}, {},{},DEFAULTS,timestamp())
         self.assertFalse(d["devices"]["humidifier"]["after"])
 
@@ -188,6 +189,27 @@ class PlannerTests(unittest.TestCase):
 
 
 class ActuatorTests(unittest.IsolatedAsyncioTestCase):
+    async def test_honeywell_hold_accepted_at_every_minute_and_midnight(self):
+        from io_live import HouseIO
+        from aiosomecomfort.device import _hold_quarter_hours
+        b=HouseIO.__new__(HouseIO);b.hw=Mock()
+        d=b.hw.device;d.system_mode="heat";d.setpoint_heat=66;d.fan_mode="auto"
+        d.set_hold_heat=AsyncMock()
+        for hour in (7,22,23):
+            for minute in range(60):
+                now=datetime(2026,11,24,hour,minute,37,tzinfo=TZ)
+                with patch("io_live.datetime") as clock:
+                    clock.now.return_value=now
+                    await b.write_device("honeywell",{"heat_sp":73,"mode":"heat","fan":"auto"})
+                until=d.set_hold_heat.call_args.args[0]
+                _hold_quarter_hours(until)  # Real installed client's validation.
+                self.assertEqual(until.second,0)
+                expires=datetime.combine(now.date(),until,tzinfo=TZ)
+                if expires<=now:expires+=timedelta(days=1)
+                self.assertGreaterEqual(expires-now,timedelta(hours=2))
+                self.assertLess(expires-now,timedelta(hours=2,minutes=15))
+                self.assertEqual(d.set_hold_heat.call_args.kwargs["temperature"],73)
+
     async def test_nest_does_not_send_redundant_eco_command(self):
         from io_live import HouseIO
         b=HouseIO.__new__(HouseIO)
@@ -213,33 +235,6 @@ class ActuatorTests(unittest.IsolatedAsyncioTestCase):
         with patch("controller.time.time",side_effect=lambda:clock[0]),patch("controller.observations.read",side_effect=read),patch("controller.weather.read",return_value=w),patch("controller.load",return_value={}):
             await controller.tick({},DEFAULTS,None,b,dry=True)
         self.assertEqual(seen,[timestamp()+30])
-
-    async def test_humidifier_rechecks_airflow_and_fails_off(self):
-        from io_live import HouseIO
-        b=HouseIO.__new__(HouseIO);b.cfg={"shelly_url":"http://test"}
-        b.hw=Mock();b.hw.device.refresh=AsyncMock();b.hw.device.fan_running=False
-        b.h=Mock();b.h.shelly_rpc.return_value={"id":"verified-relay"}
-        with patch("io_live.load",return_value={"humidifier_device_id":"verified-relay"}):
-            with self.assertRaises(RuntimeError):await b.humidifier(True)
-        b.h.shelly_on.assert_not_called();b.h.shelly_off.assert_called_once()
-
-    async def test_humidifier_refresh_failure_fails_off(self):
-        from io_live import HouseIO
-        b=HouseIO.__new__(HouseIO);b.cfg={"shelly_url":"http://test"}
-        b.hw=Mock();b.hw.device.refresh=AsyncMock(side_effect=TimeoutError())
-        b.h=Mock();b.h.shelly_rpc.return_value={"id":"verified-relay"}
-        with patch("io_live.load",return_value={"humidifier_device_id":"verified-relay"}):
-            with self.assertRaises(TimeoutError):await b.humidifier(True)
-        b.h.shelly_on.assert_not_called();b.h.shelly_off.assert_called_once()
-
-    async def test_humidifier_live_verified_airflow_and_lease(self):
-        from io_live import HouseIO
-        b=HouseIO.__new__(HouseIO);b.cfg={"shelly_url":"http://test"}
-        b.hw=Mock();b.hw.device.refresh=AsyncMock();b.hw.device.fan_running=True
-        b.h=Mock();b.h.shelly_rpc.return_value={"id":"verified-relay"}
-        b.h.shelly_status.return_value={"output":True,"timer_duration":600}
-        with patch("io_live.load",return_value={"humidifier_device_id":"verified-relay"}):await b.humidifier(True)
-        b.h.shelly_on.assert_called_once_with("http://test",600)
 
     async def test_watchdog_shadow_cannot_write(self):
         with patch("io_live.HouseIO") as backend:
@@ -276,6 +271,129 @@ class ActuatorTests(unittest.IsolatedAsyncioTestCase):
         await Actuator(b,AsyncMock()).apply(d,s,DEFAULTS|{"mode":"live"},timestamp(),lambda e:None)
         self.assertEqual(d["devices"]["honeywell"]["write"],"rate_limited")
         self.assertEqual(d["devices"]["nest"]["write"],"rate_limited")
+
+
+class FireDayTests(unittest.IsolatedAsyncioTestCase):
+    def plan(self,state,now=None,running=False,rh=30,temp=72):
+        now=now or timestamp("2026-11-26T12:00:00")
+        obs,w=fixture(temp)
+        for t in obs["thermostats"].values():t.update(calling=False,fan_running=running)
+        obs["sensors"]["living_rh"]=rh
+        obs["blower"].update(running=running,observed_at=now,watts=25.8 if running else 5)
+        return planner.decide(obs,w,{},state,{},DEFAULTS,now)
+
+    def test_stove_fan_hold_and_expiry_keep_airflow_interlock(self):
+        now=timestamp("2026-11-26T12:00:00");state={}
+        command(state,{"action":"stove","hours":2,"fan_hold":True},now)
+        d=self.plan(state,now)
+        self.assertEqual(d["devices"]["honeywell"]["after"]["fan"],"on")
+        self.assertEqual(d["devices"]["blower"]["after"],"on")
+        self.assertFalse(d["devices"]["humidifier"]["after"])
+        self.assertTrue(self.plan(state,now+60,running=True)["devices"]["humidifier"]["after"])
+        self.assertFalse(self.plan(state,now+120,running=True,rh=55)["devices"]["humidifier"]["after"])
+        d=self.plan(state,now+7200,running=True)
+        self.assertEqual(d["devices"]["honeywell"]["after"]["fan"],"auto")
+        self.assertTrue(d["devices"]["humidifier"]["after"])  # Still powered after stove expiry.
+
+    def test_stove_default_cancel_away_safety(self):
+        now=timestamp("2026-11-26T12:00:00");state={}
+        command(state,{"action":"stove"},now)
+        self.assertEqual(self.plan(state,now)["devices"]["blower"]["after"],"auto")
+        for other,temp in (({"housemode":"away"},72),({},81)):
+            s={"stove_until":now+3600,"stove_fan_hold":True,**other}
+            d=self.plan(s,now,running=True,temp=temp)
+            self.assertEqual(d["devices"]["blower"]["after"],"auto")
+            self.assertEqual(d["devices"]["humidifier"]["after"],temp<80)
+        command(state,{"action":"stove","hours":0,"fan_hold":True},now)
+        self.assertFalse(state["stove_fan_hold"])
+        for cmd in ({"action":"stove","hours":9},{"action":"stove","fan_hold":"yes"},
+                    {"action":"nest-fan","hours":13},{"action":"nest-fan","hours":float("nan")},
+                    {"action":"nest-fan","fan":"AUTO"}):
+            with self.assertRaises(ValueError):command({},cmd,now)
+
+    def test_nest_fan_deadline_and_no_upstairs_airflow(self):
+        now=timestamp("2026-11-26T12:00:00");s={}
+        command(s,{"action":"nest-fan","hours":2},now)
+        d=self.plan(s,now)
+        self.assertEqual(d["devices"]["nest"]["after"]["fan_timer"],"ON")
+        self.assertEqual(d["devices"]["nest"]["after"]["fan_until"],now+7200)
+        self.assertFalse(d["devices"]["humidifier"]["after"])
+        self.assertEqual(self.plan(s,now+7200)["devices"]["nest"]["after"]["fan_timer"],"OFF")
+        command(s,{"action":"nest-fan","fan":"OFF"},now)
+        self.assertEqual(s["nest_fan_until"],0)
+
+    async def test_watchdog_overrides_both_fan_requests(self):
+        import controller
+        now=timestamp("2026-11-26T12:00:00");obs,w=fixture(72)
+        s={"stove_until":now+7200,"stove_fan_hold":True,"nest_fan_until":now+7200}
+        def loaded(path,default=None):
+            return {"ts":now,"alerts":["PLANNER_STALE"]} if path.name=="watchdog-request.json" else {}
+        with patch("controller.time.time",return_value=now),patch("controller.observations.read",return_value=obs),patch("controller.weather.read",return_value=w),patch("controller.load",side_effect=loaded):
+            d=await controller.tick(s,DEFAULTS|{"mode":"live"},None,dry=True)
+        self.assertEqual(d["reason_code"],"WATCHDOG_SAFE_REQUEST")
+        self.assertEqual(d["devices"]["honeywell"]["after"]["fan"],"auto")
+        self.assertEqual(d["devices"]["blower"]["after"],"auto")
+        self.assertEqual(d["devices"]["nest"]["after"]["fan_timer"],"OFF")
+        self.assertNotIn("fan_until",d["devices"]["nest"]["after"])
+        self.assertFalse(d["devices"]["humidifier"]["after"])
+
+    async def test_nest_timer_payload_and_readback(self):
+        from io_live import HouseIO
+        from actuator import changed
+        b=HouseIO.__new__(HouseIO);now=timestamp()
+        traits={"sdm.devices.traits.ThermostatMode":{"mode":"HEAT"},
+                "sdm.devices.traits.Fan":{"timerMode":"ON","timerTimeout":datetime.fromtimestamp(now+7200,TZ).isoformat()}}
+        b.nest_request=Mock(return_value={"traits":traits})
+        desired={"fan_timer":"ON","fan_until":now+7200}
+        with patch("io_live.time.time",return_value=now):await b.write_device("nest",desired)
+        b.nest_request.assert_called_with("sdm.devices.commands.Fan.SetTimer",{"timerMode":"ON","duration":"7200s"})
+        self.assertFalse(changed(await b.read_device("nest"),desired))
+        self.assertTrue(changed({"fan_timer":"ON","fan_until":now+600},desired))
+        await b.write_device("nest",{"fan_timer":"OFF"})
+        b.nest_request.assert_called_with("sdm.devices.commands.Fan.SetTimer",{"timerMode":"OFF"})
+        traits.pop("sdm.devices.traits.Fan");b.nest_request.reset_mock()
+        with self.assertRaises(RuntimeError):await b.write_device("nest",desired)
+        self.assertEqual(b.nest_request.call_count,1)
+
+    async def test_two_failed_sends_alert_persists_then_clears(self):
+        d=decision();d["id"]="test";d["devices"]["nest"]["after"]={}
+        old=d["devices"]["honeywell"]["before"]
+        b=Mock();b.read_device=AsyncMock(return_value=old)
+        b.write_device=AsyncMock(side_effect=TimeoutError());b.humidifier=AsyncMock()
+        s={};events=[]
+        await Actuator(b,AsyncMock()).apply(d,s,DEFAULTS|{"mode":"live"},timestamp(),events.append)
+        self.assertEqual(s["actuator"]["honeywell"]["failed_writes"],3)
+        self.assertIn("HONEYWELL_WRITE_FAILURE_2",d["alerts"])
+        self.assertEqual(len([e for e in events if e["kind"]=="watchdog"]),1)
+        self.assertEqual(len(s["actuator"]["honeywell"]["writes"]),3)
+        d=decision();d["id"]="next";d["devices"]["nest"]["after"]={}
+        await Actuator(b,AsyncMock()).apply(d,s,DEFAULTS|{"mode":"live"},timestamp()+60,events.append)
+        self.assertEqual(d["devices"]["honeywell"]["write"],"rate_limited")
+        self.assertIn("HONEYWELL_WRITE_FAILURE_2",d["alerts"])
+        d=decision();d["id"]="recovered";d["devices"]["nest"]["after"]={}
+        b.read_device=AsyncMock(return_value={"fresh":True,**d["devices"]["honeywell"]["after"]})
+        await Actuator(b,AsyncMock()).apply(d,s,DEFAULTS|{"mode":"live"},timestamp()+3601,events.append)
+        self.assertEqual(s["actuator"]["honeywell"]["failed_writes"],0)
+        self.assertNotIn("HONEYWELL_WRITE_FAILURE_2",d["alerts"])
+
+    async def test_fresh_poll_clears_failed_send_alert_without_resend(self):
+        d=decision();d["id"]="verified";d["devices"]["nest"]["after"]={}
+        d["devices"]["honeywell"]["before"].update(d["devices"]["honeywell"]["after"])
+        s={"actuator":{"honeywell":{"writes":[timestamp()],"failed_writes":2}},"honeywell_failure_since":timestamp()-1800}
+        b=Mock();b.humidifier=AsyncMock()
+        await Actuator(b,AsyncMock()).apply(d,s,DEFAULTS|{"mode":"live"},timestamp(),lambda e:None)
+        self.assertEqual(s["actuator"]["honeywell"]["failed_writes"],0)
+        self.assertNotIn("HONEYWELL_WRITE_FAILURE_2",d["alerts"])
+        self.assertNotIn("honeywell_failure_since",s)
+        b.write_device.assert_not_called()
+
+    async def test_read_errors_without_send_do_not_count_as_failed_writes(self):
+        d=decision();d["id"]="test";d["devices"]["nest"]["after"]={}
+        b=Mock();b.read_device=AsyncMock(side_effect=TimeoutError());b.humidifier=AsyncMock()
+        s={}
+        await Actuator(b,AsyncMock()).apply(d,s,DEFAULTS|{"mode":"live"},timestamp(),lambda e:None)
+        self.assertEqual(s["actuator"]["honeywell"].get("failed_writes",0),0)
+        b.write_device.assert_not_called()
 
 
 class CutoverTests(unittest.TestCase):

@@ -1,5 +1,6 @@
 from datetime import datetime
 from common import TZ, stamp
+from savings import update as update_savings
 
 
 def update(state,event,obs,cfg,now):
@@ -13,12 +14,17 @@ def update(state,event,obs,cfg,now):
             "first_arrival":None,"stage":"unknown","cost_basis":"runtime × input-rating estimate",
             "humidity_basis":"2 × 90W, 2 × 3.5 gal/h estimates","read_failures":0,"watchdog_alerts":0}
     previous=state.get("last_report")
+    if daily.get("blower_source")!="honeywell_fan_status":
+        daily["blower_only_h"]=0
+        daily["blower_source"]="honeywell_fan_status"
+        daily["blower_coverage_since"]=stamp(now)
+        daily["blower_correction"]="Earlier .151 power/runtime belongs to Fireplace Blower, not furnace."
     if previous and previous.get("date")==date and 0<now-previous["t"]<=180:
         h=(now-previous["t"])/3600;old=previous["obs"];old_event=previous["event"]
         up=old["thermostats"]["honeywell"].get("calling");down=old["thermostats"]["nest"].get("calling")
         if up is not None and down is not None:
             daily["coverage_h"]+=h;daily["upstairs_h"]+=h*bool(up);daily["nest_h"]+=h*bool(down)
-            daily["blower_only_h"]+=h*bool(old["thermostats"]["honeywell"].get("fan_running") and not up)
+            daily["blower_only_h"]+=h*bool(old.get("blower",{}).get("source")=="honeywell_fan_status" and old.get("blower",{}).get("valid") and old.get("blower",{}).get("running") and not up)
         if old.get("humidifier") is True:daily["humid_h"]+=h
         if old.get("loft_fan") is True:
             daily["loft_fan_h"]+=h
@@ -29,8 +35,9 @@ def update(state,event,obs,cfg,now):
             if living<target:
                 if down:daily["nest_runtime_below_target_h"]+=h
                 elif down is False:daily["nest_satisfied_below_target_samples"]+=1
-    if event["period"]=="warmup":
+    if event["period"]=="warmup" and not daily.get("wake_prediction_at"):
         daily["wake_prediction_f"]=event["plan"].get("predicted_wake_f")
+        daily["wake_prediction_at"]=stamp(now)
     dt=datetime.fromtimestamp(now,TZ);wake=cfg["weekend_wake"] if dt.weekday()>=5 else cfg["wake"]
     wh,wm=map(int,wake.split(":"));minutes=dt.hour*60+dt.minute-wh*60-wm
     if 0<=minutes<=10 and daily["wake_actual_f"] is None and obs["sensors"].get("living_f") is not None:
@@ -48,8 +55,12 @@ def update(state,event,obs,cfg,now):
     daily["humid_water_gal"]=daily["humid_h"]*7
     daily["humid_water_usd"]=daily["humid_water_gal"]*cfg["water_usd_per_gal"] if cfg["water_usd_per_gal"] is not None else None
     daily["loft_usd"]=daily["loft_kwh"]*cfg["electric_usd_per_kwh"]
+    # The former meter was the fireplace. Never carry its totals as furnace data.
+    for key in ("blower_h","blower_observed_h","furnace_kwh","blower_watts","blower_thresholds_provisional"):
+        daily.pop(key,None)
     daily["comparison_note"]=("Live control: compare predictions with actual measurements; early learning remains provisional."
         if cfg["mode"]=="live" else "Shadow plans are compared against observed existing controls; predictions are not achieved outcomes.")
+    update_savings(daily,previous,event,obs,cfg,now)
     state["daily"]=daily
     state["last_report"]={"date":date,"t":now,"obs":obs,"event":{"period":event["period"],"plan":event["plan"]}}
     return daily

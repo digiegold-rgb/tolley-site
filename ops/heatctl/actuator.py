@@ -1,6 +1,9 @@
 """Single verified write path. Instantiated only after live cutover gates pass."""
 import asyncio
+import time
 from common import stamp
+import ownership
+import fire_policy
 
 
 def changed(before, after):
@@ -8,6 +11,8 @@ def changed(before, after):
         actual=before.get(k)
         if k=="heat_sp":
             if actual is None or abs(actual-v)>0.4:return True
+        elif k=="fan_until":
+            if actual is None or abs(actual-v)>60:return True
         elif str(actual).lower()!=str(v).lower():return True
     return False
 
@@ -21,12 +26,19 @@ class Actuator:
         records=state.setdefault("actuator",{})
         large=False
         for name in ("honeywell","nest"):
-            item=decision["devices"][name];desired=dict(item["after"]);old=item["before"]
+            item=decision["devices"][name];desired=ownership.filter_desired(name,item["after"],ownership.active());old=item["before"]
+            item["after"]=desired
             if not desired: item["write"]="skipped";continue
             if not old.get("fresh"): item["write"]="blocked_stale";continue
             if "heat_sp" in desired and not cfg[name+"_min"]<=desired["heat_sp"]<=cfg[name+"_max"]:
                 item["write"]="blocked_bounds";continue
-            if not changed(old,desired):item["write"]="skipped";continue
+            if not changed(old,desired):
+                item["write"]="skipped"
+                # A fresh poll can verify an earlier ambiguous write without a resend.
+                rec=records.get(name,{})
+                rec.update(failures=0,retry_after=0,failed_writes=0)
+                if name=="honeywell":state.pop("honeywell_failure_since",None)
+                continue
             rec=records.setdefault(name,{"writes":[]})
             rec["writes"]=[t for t in rec["writes"] if now-t<3600]
             critical=decision.get("safety",False)
@@ -40,27 +52,50 @@ class Actuator:
             # Read before each send. Never blindly resend after an ambiguous timeout.
             for attempt,delay in enumerate((0,5,15),1):
                 if delay:await self.sleep(delay)
+                sent=False
                 event={"kind":"write_attempt","device":name,"attempt":attempt,"desired":desired,
                        "decision_id":decision["id"],"mode":"live","season":cfg["hvac_season"]}
                 try:
                     before=await self.backend.read_device(name)
                     if not before.get("fresh"):raise RuntimeError("fresh device read unavailable")
+                    # A user can change a different function between poll and send.
+                    # Never overwrite that newer observation with an old proposal.
+                    for scope,(device,fields) in ownership.SCOPES.items():
+                        if device==name and any(ownership.different(before.get(k),old.get(k),k)
+                            and ownership.different(before.get(k),desired.get(k),k) for k in fields if k in desired):
+                            for key in fields:desired.pop(key,None)
+                    if name=="honeywell" and str(desired.get("fan","")).lower()=="on" and time.time()>=fire_policy.next_cutoff(now):
+                        desired.pop("fan",None)
+                        fire_policy.prepare(state,time.time())
+                    desired=ownership.filter_desired(name,desired,ownership.active())
+                    item["after"]=dict(desired);event["desired"]=dict(desired)
                     if changed(before,desired):
                         # Every actual send counts, even if its response times out.
                         if not critical and len(rec["writes"])>=3:raise RuntimeError("hourly write cap reached")
                         rec["writes"].append(now)
                         self.persist(state)
+                        if name=="honeywell" and getattr(self.backend,"supports_fan_deadline",False) is True:
+                            self.backend.fan_command_deadline=fire_policy.next_cutoff(now)
+                        sent=True
                         await self.backend.write_device(name,desired)
                         await self.sleep(20)
                         after=await self.backend.read_device(name)
                     else:after=before
                     if not after.get("fresh") or changed(after,desired):raise RuntimeError("readback mismatch")
                     ok=True;event.update(result="ok",readback_ok=True);item.update(write="ok",readback_ok=True)
-                    state.setdefault("confirmed",{})[name]=desired;rec.update(failures=0,retry_after=0)
+                    state.setdefault("confirmed",{}).setdefault(name,{}).update(desired);rec.update(failures=0,retry_after=0,failed_writes=0)
                 except Exception as exc:
                     # Never include exception strings from cloud clients; they can contain credentials.
                     event.update(result="failed",readback_ok=False,error=type(exc).__name__)
                     item.update(write="failed",readback_ok=False,error=type(exc).__name__)
+                    if sent:
+                        rec["failed_writes"]=rec.get("failed_writes",0)+1
+                        if name=="honeywell" and rec["failed_writes"]==2:
+                            alert="HONEYWELL_WRITE_FAILURE_2"
+                            emit({"kind":"watchdog","mode":"live","season":cfg["hvac_season"],
+                                  "alerts":[alert],"reason_code":alert,"decision_id":decision["id"],
+                                  "why":"Two consecutive Honeywell sends failed or could not be verified by readback."})
+                        self.persist(state)
                 item["attempts"]=attempt;emit(event)
                 if ok:break
             if not ok:
@@ -69,7 +104,25 @@ class Actuator:
                 rec["retry_after"]=now+(60 if critical or deficit>=0.5 else min(3600,900*2**(rec["failures"]-1)))
                 if name=="honeywell":state.setdefault("honeywell_failure_since",now)
             elif name=="honeywell":state.pop("honeywell_failure_since",None)
+        if records.get("honeywell",{}).get("failed_writes",0)>=2:
+            decision.setdefault("alerts",[]).append("HONEYWELL_WRITE_FAILURE_2")
+        nest_item=decision["devices"]["nest"]
+        if nest_item["after"].get("fan_timer")=="OFF" and nest_item.get("write") in ("ok","skipped"):
+            state.pop("nest_fan_until",None)
         desired=decision["devices"]["humidifier"]["after"]
+        if getattr(self.backend,"fast_humidity",False) is True:
+            if decision.get("safety") and decision.get("reason_code")!="WATCHDOG_SAFE_REQUEST":
+                await self.backend.humidifier(False)
+            row=self.backend.humidity_guard.latest
+            from common import fresh
+            if fresh(row.get("observed_at"),time.time(),30):
+                decision["devices"]["humidifier"].update({k:row[k] for k in
+                    ("after","why","write","readback_ok","error","observed") if k in row})
+                decision["devices"]["blower_power"]=row.get("blower",{})
+            else:
+                decision["devices"]["humidifier"].update(after=False,write="unavailable",readback_ok=False,
+                    why="fast humidity loop has no fresh result")
+            return
         try:
             await self.backend.humidifier(desired)
             decision["devices"]["humidifier"].update(write="ok",readback_ok=True)

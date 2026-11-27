@@ -7,16 +7,19 @@ import asyncio
 import fcntl
 import importlib.util
 import json
+import math
 import time
 import urllib.request
 import urllib.parse
 from datetime import datetime, timedelta
 from pathlib import Path
-from common import TZ, ROOT, load, atomic
+from common import TZ, ROOT, load, atomic, epoch
 
 
 class HouseIO:
-    def __init__(self):
+    def __init__(self, read_only=False):
+        self.read_only=read_only
+        self.supports_fan_deadline=True;self.fan_command_deadline=None
         base=Path.home()/"humid"
         self.lock=(base/"humid.lock").open("a")
         fcntl.flock(self.lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
@@ -24,6 +27,11 @@ class HouseIO:
         spec=importlib.util.spec_from_file_location("heatctl_legacy_humid",base/"humid.py")
         self.h=importlib.util.module_from_spec(spec);sys.modules[spec.name]=self.h;spec.loader.exec_module(self.h)
         self.cfg=self.h.load_config();self.password=self.h.load_tcc_password(Path(self.cfg["secrets_dir"]))
+        from humidity import HumidityLoop, HUMIDIFIER_URL
+        if self.cfg["shelly_url"].rstrip("/")!=HUMIDIFIER_URL:
+            self.lock.close()
+            raise RuntimeError("Only the pinned .36 humidifier relay may be controlled")
+        self.humidity_guard=HumidityLoop(self);self.fast_humidity=True
         self.cfg["circulate_humidify"]=False
         # The legacy collector chooses the first Nest in the account. Live
         # control must observe the exact same pinned device that it commands.
@@ -57,7 +65,8 @@ class HouseIO:
                 "ambient_f":ambient*1.8+32 if ambient is not None else None,
                 "mode":traits.get("sdm.devices.traits.ThermostatMode",{}).get("mode"),
                 "eco":traits.get("sdm.devices.traits.ThermostatEco",{}).get("mode"),
-                "fan_timer":traits.get("sdm.devices.traits.Fan",{}).get("timerMode"),"t":time.time()}
+                "fan_timer":traits.get("sdm.devices.traits.Fan",{}).get("timerMode"),
+                "fan_until":epoch(traits.get("sdm.devices.traits.Fan",{}).get("timerTimeout")),"t":time.time()}
             return traits["sdm.devices.traits.ThermostatHvac"]["status"],""
         except Exception as exc:return None,type(exc).__name__
 
@@ -79,13 +88,14 @@ class HouseIO:
             try:self.last["relay_on"]=self.h.relay_is_on(await asyncio.to_thread(self.h.shelly_status,self.cfg["shelly_url"]))
             except Exception:self.last["relay_on"]=None
         heating=any(str(self.last.get(k,"")).lower() in ("heat","heating","auxheat") for k in ("honeywell_hvac","nest_hvac"))
-        prefix="heating:heatctl" if item["after"] and heating else "circulate:heatctl_stove" if item["after"] and item["why"]=="stove" else "heatctl"
+        prefix="heating:heatctl" if item["after"] and heating else "circulate:heatctl_honeywell" if item["after"] else "heatctl"
         self.last.update(want_on=item["after"],applied=item["after"] if item.get("readback_ok") else None,
             reason=prefix+": "+item["why"],override="heatctl",target_rh=decision["plan"]["rh_target"],
             max_rh=decision["plan"]["rh_target"],controller="heatctl")
         self.last=self.h.maybe_log_and_save(self.cfg,self.last,self.previous)
 
     def nest_request(self, command=None, params=None):
+        if command and getattr(self,"read_only",False):raise RuntimeError("Read-only collector cannot command Nest")
         manifest=load(ROOT/"cutover.json",{})
         name=manifest.get("nest_device_name","")
         if not name.startswith("enterprises/"+self.cfg["nest_project_id"]+"/devices/"):
@@ -107,56 +117,69 @@ class HouseIO:
         traits=(await asyncio.to_thread(self.nest_request))["traits"]
         sp=traits.get("sdm.devices.traits.ThermostatTemperatureSetpoint",{}).get("heatCelsius")
         return {"fresh":True,"heat_sp":sp*1.8+32 if sp is not None else None,
-                "mode":traits.get("sdm.devices.traits.ThermostatMode",{}).get("mode")}
+                "mode":traits.get("sdm.devices.traits.ThermostatMode",{}).get("mode"),
+                "fan_timer":traits.get("sdm.devices.traits.Fan",{}).get("timerMode"),
+                "fan_until":epoch(traits.get("sdm.devices.traits.Fan",{}).get("timerTimeout"))}
 
     async def write_device(self,name,desired):
+        if getattr(self,"read_only",False):raise RuntimeError("Read-only collector cannot write equipment")
+        from ownership import active,filter_desired
+        desired=filter_desired(name,desired,active())
+        if not desired:return
         if name=="honeywell":
             d=self.hw.device
             if d is None:raise RuntimeError("No persistent TCC session")
             if desired.get("mode") and str(d.system_mode).lower()!=desired["mode"].lower():
                 await asyncio.wait_for(d.set_system_mode(desired["mode"]),45)
             if "heat_sp" in desired and abs(d.setpoint_heat-desired["heat_sp"])>0.4:
-                until=(datetime.now(TZ)+timedelta(hours=2)).time().replace(second=0,microsecond=0)
+                # TCC rejects hold deadlines between quarter-hour boundaries.
+                # Round up so the temporary hold lasts at least two hours.
+                requested=datetime.now(TZ)+timedelta(hours=2)
+                deadline=requested.replace(minute=(requested.minute//15)*15,second=0,microsecond=0)
+                if deadline<requested:deadline+=timedelta(minutes=15)
+                until=deadline.time()
                 await asyncio.wait_for(d.set_hold_heat(until,temperature=desired["heat_sp"]),45)
             if desired.get("fan") and d.fan_mode!=desired["fan"]:
+                deadline=getattr(self,"fan_command_deadline",None)
+                if str(desired["fan"]).lower()=="on" and deadline is not None and time.time()>=deadline:
+                    raise RuntimeError("Stove fan ON request expired at nightly cutoff")
                 await asyncio.wait_for(d.set_fan_mode(desired["fan"]),45)
         else:
-            mode=desired.get("mode","HEAT")
             traits=(await asyncio.to_thread(self.nest_request))["traits"]
             current_mode=traits.get("sdm.devices.traits.ThermostatMode",{}).get("mode")
+            mode=desired.get("mode",current_mode)
+            fan=desired.get("fan_timer")
+            if fan is not None and (fan not in ("ON","OFF") or "sdm.devices.traits.Fan" not in traits):
+                raise RuntimeError("Nest fan capability unavailable or invalid mode")
             eco=traits.get("sdm.devices.traits.ThermostatEco",{}).get("mode")
             if current_mode!=mode:
                 await asyncio.to_thread(self.nest_request,"sdm.devices.commands.ThermostatMode.SetMode",{"mode":mode})
             # Some Nest models reject redundant Eco commands. If Eco must be
             # exited, HEAT must be established first (OFF forbids that command).
-            if mode=="HEAT" and eco=="MANUAL_ECO":
+            if ("mode" in desired or "heat_sp" in desired) and mode=="HEAT" and eco=="MANUAL_ECO":
                 await asyncio.to_thread(self.nest_request,"sdm.devices.commands.ThermostatEco.SetMode",{"mode":"OFF"})
             if mode=="HEAT" and "heat_sp" in desired:
                 await asyncio.to_thread(self.nest_request,"sdm.devices.commands.ThermostatTemperatureSetpoint.SetHeat",{"heatCelsius":(desired["heat_sp"]-32)/1.8})
+            if fan is not None:
+                params={"timerMode":fan}
+                if fan=="ON":
+                    seconds=math.ceil(desired["fan_until"]-time.time())
+                    if not 1<=seconds<=43200:raise ValueError("Nest fan deadline outside bounds")
+                    params["duration"]=str(seconds)+"s"
+                await asyncio.to_thread(self.nest_request,"sdm.devices.commands.Fan.SetTimer",params)
 
     async def humidifier(self,on):
-        expected=load(ROOT/"cutover.json",{}).get("humidifier_device_id")
-        info=await asyncio.to_thread(self.h.shelly_rpc,self.cfg["shelly_url"],"Shelly.GetDeviceInfo")
-        if not expected or info.get("id")!=expected:raise RuntimeError("Humidifier identity not verified")
+        if getattr(self,"read_only",False):raise RuntimeError("Read-only collector cannot write equipment")
+        # Main planner never renews ON leases. Only the fast local loop can do so.
         if on:
-            # Thermostat writes/readbacks may have stopped the blower since
-            # planning. Recheck actual airflow immediately before energizing.
-            if self.hw.device is None:
-                await asyncio.to_thread(self.h.shelly_off,self.cfg["shelly_url"])
-                raise RuntimeError("Upstairs airflow unavailable")
-            try:
-                await asyncio.wait_for(self.hw.device.refresh(),45)
-                if self.hw.device.fan_running is not True:raise RuntimeError("Upstairs airflow not confirmed")
-            except Exception:
-                await asyncio.to_thread(self.h.shelly_off,self.cfg["shelly_url"])
-                raise
-            await asyncio.to_thread(self.h.shelly_on,self.cfg["shelly_url"],600)
-        else:await asyncio.to_thread(self.h.shelly_off,self.cfg["shelly_url"])
-        actual=await asyncio.to_thread(self.h.shelly_status,self.cfg["shelly_url"])
-        if actual.get("output") is not on:raise RuntimeError("Humidifier readback failed")
-        if on and actual.get("timer_duration")!=600:
-            await asyncio.to_thread(self.h.shelly_off,self.cfg["shelly_url"])
-            raise RuntimeError("Humidifier lease missing")
+            row=await self.humidity_guard.step()
+            if not row.get("readback_ok") or row.get("observed") is not True:
+                raise RuntimeError("Power-based humidification was not permitted or verified")
+        else:
+            async with self.humidity_guard.lock:
+                await self.humidity_guard.relay(False)
+                self.humidity_guard.latest={"observed_at":time.time(),"after":False,"observed":False,
+                    "why":"controller safety or shutdown","write":"ok","readback_ok":True}
 
     async def close(self):
         await self.hw.close();self.lock.close()
