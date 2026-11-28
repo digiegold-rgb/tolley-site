@@ -1,4 +1,7 @@
 [
+  {"file":"app/api/hq/beeper/route.ts","path":"/api/hq/beeper","audience":"private"},
+  {"file":"app/api/hq/beeper/sync/route.ts","path":"/api/hq/beeper/sync","audience":"private"},
+  {"file":"app/hq/inbox/page.tsx","path":"/hq/inbox","audience":"private"},
   {"file":"app/business/page.tsx","path":"/business","audience":"public"},
   {"file":"app/job/page.tsx","path":"/job","audience":"supporting"},
   {"file":"app/pc/page.tsx","path":"/pc","audience":"public"},

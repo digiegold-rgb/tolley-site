@@ -39,7 +39,7 @@ export async function POST(req:Request) {
   const chat=chatSchema.parse(row!.meta);
   if(chat.messages.at(-1)?.id!==c.expectedMessageId)return reply({error:'Conversation changed. Refresh before sending.'},409);
  }
- const command={...c,id:c.requestId,status:'queued',createdAt:new Date().toISOString(),...(c.action.startsWith('listing-')?{listing:obj(row?.meta).listing}:{})};
+ const command={...c,id:c.requestId,status:'queued',createdAt:new Date().toISOString(),...(c.action.startsWith('listing-')?{listing:String(obj(row?.meta).listing||'')}:{})};
  // Create-only makes repeated HTTP submissions idempotent, including concurrent clicks.
  try{await prisma.$transaction(async tx=>{
   if(c.action==='send')await tx.hqSyncState.create({data:{id:key('sendlock',`${c.chatId}:${c.expectedMessageId}`),meta:{commandId:c.requestId},lastAttemptAt:new Date()}});
