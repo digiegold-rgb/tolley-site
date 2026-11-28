@@ -1,0 +1,50 @@
+Ruthann Marketplace two-message automation
+
+Spark owns the worker and private state; Mac mini owns the Beeper API token.
+Account: Ruthann personal Facebook only. No Grok or Page messages.
+Commands on Spark:
+  beeper-sales status
+  beeper-sales pause
+  beeper-sales resume
+  beeper-sales pause 'CHAT_ID'
+  beeper-sales resume 'CHAT_ID'
+  beeper-sales listing-pause 'Exact listing title without buyer prefix'
+  beeper-sales listing-resume 'Exact listing title without buyer prefix'
+  beeper-sales reset 'CHAT_ID'
+  beeper-sales preview
+Status includes chat IDs and titles. Listing pauses apply to current/future matching titles.
+Conversation reset keeps processed-message history; it allows the two steps for NEW messages again.
+Only reset an uncertain-send conversation after checking Messenger for delivery.
+State: ~/.config/tolley-beeper-automation/state.sqlite (private).
+Service: systemctl --user status tolley-beeper-sales
+Logs: journalctl --user -u tolley-beeper-sales
+Emergency stop: systemctl --user stop tolley-beeper-sales
+
+Rules: day reply until 19:00 America/Chicago; tomorrow reply 19:00-23:59.
+ETA reply follows positive buyer interest after the first reply, once per chat.
+Human replies pause that chat. Incomplete identity or uncertain writes fail closed.
+Assumes availability until paused. Does not check inventory, holidays, or reservations.
+Messages older than one hour after an outage are held. Historical imports are ignored.
+Eligibility uses account ID, buyer/item title, and exactly two participants including self.
+Threads where Ruthann asks availability herself are held as buyer-side conversations.
+Ambiguous names/titles require review; this is not a universal Marketplace detector.
+Connection down => error visible in status; no fallback to other accounts.
+Keep Beeper open on mini. Never print or move its token into chat or repository.
+No external LLM or new paid dependency.
+
+HQ inbox extension:
+  Owner dashboard: /hq/inbox and HQ > Chats.
+  Worker needs CUSTOMER_SYNC_SECRET and optional CUSTOMER_SYNC_URL (existing
+  protected customer-sync environment file). No browser receives either token.
+  Worker polls authenticated commands; snapshots sync roughly every 30 seconds.
+  The recent message page is mirrored, not the entire historical archive.
+  Pending controls display queued until acknowledged. Never claim queued means sent.
+  Owner sends pause automation, require the latest message ID, and have a durable
+  command ID. An uncertain send is never retried automatically.
+  Notes, follow-ups, and explicit customer links remain in owner HQ. No automatic
+  identity merging, lead harvesting, or real-estate replies are enabled.
+  HqSyncState stores inbox snapshots, notes, command receipts and send guards;
+  it is already included in the private customer backup. No schema migration.
+  Connector health becomes stale after 90 seconds. Old snapshots remain readable.
+  Review commands with uncertain/error status in HQ; verify Messenger before retrying.
+  Do not delete SQLite command receipts: they prevent replay of acknowledged sends.
