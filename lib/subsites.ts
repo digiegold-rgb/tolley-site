@@ -7,6 +7,7 @@ import { UNPROMOTED_SUBSITES } from "@/lib/public-route-policy";
 import { withDiscoveryFacts } from "./discovery-facts";
 import { manifest as job } from "@/app/job/agent";
 import type { SubsiteManifest } from "./agent-manifest";
+import { manifest as business } from "@/app/business/agent";
 
 // Per-subsite manifests are imported here. Each app/<name>/agent.ts exports
 // `manifest: SubsiteManifest`. Adding a new subsite = adding a row below + the
@@ -63,6 +64,7 @@ import { manifest as wd } from "@/app/wd/agent";
 import { manifest as live } from "@/app/live/agent";
 
 const registered: SubsiteManifest[] = [
+  business,
   job,
   pc,
   repair,

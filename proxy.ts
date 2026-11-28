@@ -202,7 +202,7 @@ export async function proxy(request: NextRequest) {
   const response = NextResponse.next({ request: { headers } });
   // Preserve only approved landing facts from real document requests. No DB work
   // in proxy, no tracking of private pages, assets, bots or speculative prefetch.
-  const publicLanding = /^\/(?:$|pc|repair|homes|cleanouts|net|estate|services|start|about|wd|shop|housing)(?:\/|$)/.test(pathname);
+  const publicLanding = /^\/(?:$|business|pc|repair|homes|cleanouts|net|estate|services|start|about|wd|shop|housing)(?:\/|$)/.test(pathname);
   if (publicLanding && request.method === "GET" && request.headers.get("accept")?.includes("text/html") && !request.headers.has("next-router-prefetch") && !request.headers.has("rsc") && !/bot|crawler|spider|preview/i.test(ua || "") && !isAuthenticated) {
     const attribution = captureAttribution(request.url, request.headers.get("referer") || "");
     if (!request.cookies.has("tolley_entry") || attribution.campaignSource || (attribution.referrerHost && attribution.browserSource !== "internal")) {

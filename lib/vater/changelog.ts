@@ -25,7 +25,7 @@
  * Newest entry first; the UI renders this array in order.
  */
 
-export const APP_VERSION = '1.74';
+export const APP_VERSION = '1.75';
 
 export interface ChangelogEntry {
   /** Semver-ish, matches APP_VERSION for the newest entry. */
@@ -39,6 +39,7 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  { version: '1.75', date: '2026-11-27', title: 'Practical software for businesses worldwide', items: ['Explore custom business software and workflow automation with Jared, remotely worldwide.', 'See example workflows for job paperwork, inventory, and orders, then send a project inquiry with your tools, country, and time zone.', 'The new business offering is included in Tolley’s service directory and public search and AI discovery information.'] },
   { version: '1.74', date: '2026-11-27', title: 'Heat cost and comfort accounting', items: ['The private Heat dashboard separates furnace and fireplace readings, shows estimated costs by furnace, and identifies missing costs.', 'Morning reviews compare actual room comfort with the target and the first warm-up forecast; fixed basement boosts are no longer presented as proven savings.'] },
   { version: '1.73', date: '2026-11-26', title: 'Furnace power and blower runtime', items: ['The private Heat dashboard shows furnace watts, inferred blower runtime, and electricity measured since sensor installation.', 'Power history stays available while thermostat automation is paused, with missing readings and provisional calibration clearly labeled.'] },
   { version: '1.72', date: '2026-11-23', title: 'Home heat planner in shadow', items: ['The private Heat dashboard shows proposed warm-up plans, decision history, learning and controller health.', 'Comfort requests are acknowledged by Spark; shadow mode changes proposals without operating thermostats.'] },
