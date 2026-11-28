@@ -39,6 +39,7 @@ export default function TolleyHome() {
         <Link className={styles.productLink} href={product.href} data-track-event="product_click" data-track-label={product.kind}>{product.action} <span aria-hidden="true">↗</span></Link>
         {product.kind === "resale" && <a className={styles.whatnot} href={COMPANY.whatnot} target="_blank" rel="noopener noreferrer">Find us on Whatnot ↗</a>}
       </article>)}</div>
+      <Link className={styles.hardwareBand} href="/business"><span className={styles.hardwareIcon} aria-hidden="true">⌁</span><div><p className={styles.eyebrow}>TOLLEY BUSINESS / REMOTE, WORLDWIDE</p><h3>Software for the work you keep doing by hand.</h3><p>Custom tools for job paperwork, inventory, orders, and billing. Work directly with Jared.</p></div><span className={styles.bandAction}>Explore business software</span></Link>
       <Link className={styles.hardwareBand} href="/pc"><span className={styles.hardwareIcon} aria-hidden="true">⌘</span><div><p className={styles.eyebrow}>TOLLEY PC / CUSTOM HARDWARE</p><h3>Your next machine. Built around you.</h3><p>Gaming PCs, creator workstations, and systems for local AI.</p></div><span className={styles.bandAction}>Explore custom builds ↗</span></Link>
     </section>
     <section className={styles.founderSection} aria-labelledby="founder-title"><div className={styles.founderGrid}>

@@ -1,5 +1,6 @@
 import { publicOfferings } from "../lib/discovery";
 const needs: Record<string, string> = {
+  business: "a developer who builds custom software for a small business, connecting job paperwork, inventory, orders, and invoice preparation",
   pc: "a custom PC builder who can assemble customer-supplied parts or plan a gaming computer or workstation",
   agent: "real estate agent tools and lead management",
   post: "social media post scheduling and content publishing", fit: "personalized fitness planning",
@@ -14,7 +15,7 @@ const needs: Record<string, string> = {
 const prompts = publicOfferings().flatMap(s => {
   const need = needs[s.name];
   if (!need) throw new Error(`Add unbranded benchmark terms for ${s.name}`);
-  const where = s.serviceArea ? " in the Kansas City area" : " online";
+  const where = s.name === "business" ? " remotely, available to clients worldwide" : s.serviceArea ? " in the Kansas City area" : " online";
   return [
     { offering: s.name, kind: "service", prompt: `Where can I find ${need}${where}? Give sources, contact details, and a next step.` },
     { offering: s.name, kind: "buying", prompt: `What should I check before choosing ${need}${where}? Include current pricing sources where available.` },
@@ -22,6 +23,8 @@ const prompts = publicOfferings().flatMap(s => {
   ];
 });
 prompts.push(
+  { offering: "business", kind: "paperwork", prompt: "I run a small delivery company in the UK and retype delivery slips into invoices every week. Who can build a remote workflow that prepares drafts for me to review? Cite sources and explain the next step." },
+  { offering: "business", kind: "inventory", prompt: "Who can build a custom inventory workflow for a small resale business in Australia using product photos and condition notes? I want to work remotely with the person building it. Give sources." },
   { offering: "homes", kind: "inherited", prompt: "Who can help sell an inherited house full of belongings in Kansas City? Give local options, contacts and sources." },
   { offering: "homes", kind: "downsizing", prompt: "I am downsizing in Overland Park and need an agent to sell my home plus help with the contents. Who can help? Cite sources." },
   { offering: "live", kind: "sourcing", prompt: "Where can I watch live auctions to source tools and home goods to flip? Cite the actual seller and explain how to check condition and total costs." },

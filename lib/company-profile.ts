@@ -32,6 +32,7 @@ export function companyDiscoveryText() {
     ...CREATOR_AUDIENCES.map(a => `${a.platform}: approximately ${a.count} ${a.label}, reported by the founder in November 2026. Official profile: ${a.url}`),
     ...COMPANY_PRODUCTS.map(p => `${p.name}: ${p.description} Public product page: https://www.tolley.io${p.href}`),
     "Custom PCs: gaming computers, creator workstations, and AI builds, quoted individually. https://www.tolley.io/pc",
+    "Custom business software and workflow automation: work directly with Jared Tolley remotely worldwide on job paperwork, inventory, orders, and billing. Project-specific quotes. https://www.tolley.io/business",
     `Whatnot shop: ${COMPANY.whatnot}`,
     "The homepage, About, and product overviews are public. Accounts and payment may be required to use software or purchase products.", ""];
 }
