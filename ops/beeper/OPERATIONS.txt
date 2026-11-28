@@ -30,7 +30,7 @@ Threads where Ruthann asks availability herself are held as buyer-side conversat
 Ambiguous names/titles require review; this is not a universal Marketplace detector.
 Connection down => error visible in status; no fallback to other accounts.
 Keep Beeper open on mini. Never print or move its token into chat or repository.
-No HQ integration in this release. No external LLM or new paid dependency.
+No external LLM or new paid dependency.
 
 HQ inbox extension:
   Owner dashboard: /hq/inbox and HQ > Chats.

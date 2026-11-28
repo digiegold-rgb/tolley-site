@@ -62,7 +62,12 @@ def tick(c):
  if not os.environ.get('CUSTOMER_SYNC_SECRET'):return
  c.execute('CREATE TABLE IF NOT EXISTS commands(id TEXT PRIMARY KEY,status TEXT,detail TEXT)');c.commit()
  try:
-  for cmd in api()['commands']:api(execute(c,cmd))
+  for cmd in api()['commands']:
+   if cmd.get('status')=='queued':
+    if not api({'type':'claim','id':cmd['id']}).get('claimed'):continue
+   elif not c.execute('SELECT 1 FROM commands WHERE id=?',(cmd['id'],)).fetchone():
+    api({'type':'ack','id':cmd['id'],'status':'uncertain','detail':'Interrupted command; check the actual conversation before retrying.'});continue
+   api(execute(c,cmd))
   if time.time()-float(w.setting(c,'hq_last_sync','0'))>=30:
    snap=snapshot(c);batch=[];size=0
    for chat in snap['chats']:

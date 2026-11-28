@@ -25,6 +25,8 @@ try{
  assert.equal((await admin.post('/api/hq/beeper',{data:{...send,text:'Changed text'}})).status(),409);
  assert.equal(await db.hqSyncState.count({where:{id:'beeper:cmd:'+send.requestId}}),1);
  let cmds=await (await api.get('/api/hq/beeper/sync',{headers:sync})).json();assert(cmds.commands.some(c=>c.id===send.requestId));
+ assert.equal((await (await api.post('/api/hq/beeper/sync',{headers:sync,data:{type:'claim',id:send.requestId}})).json()).claimed,true);
+ assert.equal((await (await api.post('/api/hq/beeper/sync',{headers:sync,data:{type:'claim',id:send.requestId}})).json()).claimed,false);
  assert.equal((await api.post('/api/hq/beeper/sync',{headers:sync,data:{type:'ack',id:send.requestId,status:'done',detail:'Test accepted; no real send'}})).status(),200);
  await api.post('/api/hq/beeper/sync',{headers:sync,data:{type:'ack',id:send.requestId,status:'error',detail:'late duplicate'}});
  assert.equal((await db.hqSyncState.findUnique({where:{id:'beeper:cmd:'+send.requestId}})).meta.status,'done');

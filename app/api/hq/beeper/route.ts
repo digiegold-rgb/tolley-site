@@ -20,6 +20,7 @@ export async function POST(req:Request) {
  if(req.headers.get('origin')!==new URL(req.url).origin)return reply({error:'Forbidden'},403);
  const raw=await req.text();if(raw.length>30000)return reply({error:'Too large'},413);
  let b;try{b=JSON.parse(raw);}catch{return reply({error:'Invalid JSON'},400);}
+ if(!b||typeof b!=='object')return reply({error:'Invalid request'},400);
  if(b.action==='save'){
   const parsed=noteSchema.safeParse(b);if(!parsed.success)return reply({error:'Invalid notes'},400);
   const n=parsed.data;
