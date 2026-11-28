@@ -1,5 +1,6 @@
 "use client";
 
+import { HqBeeper } from "./hq-beeper";
 import { useCallback, useEffect, useState } from "react";
 
 interface ChatRow {
@@ -53,7 +54,8 @@ export function HqFbChats() {
   }, [load]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <HqBeeper />
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <h2 style={{ margin: 0, fontSize: "1.05rem" }}>🤖 FB Messenger — bot conversations</h2>
         <button className="tab-btn" onClick={() => { setLoading(true); load(); }}>
